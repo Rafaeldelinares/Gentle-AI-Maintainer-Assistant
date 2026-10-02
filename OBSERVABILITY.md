@@ -48,6 +48,9 @@
 * **tools/run_reports.py (Regenerates All Module Reports):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/tools/run_reports.py
 
+* **tools/determinism_check.py (Fail if a Report Changes Across Processes):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/tools/determinism_check.py
+
 ---
 
 ## 2b. Mechanical Modules (read-only, no labels needed)
@@ -64,6 +67,9 @@
 * **report-cross-links.md (Module C Output — cross-repo references):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/report-cross-links.md
 
+* **report-obsolete.md (Module D Output — references to deleted source paths):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/report-obsolete.md
+
 * **modules/completeness.py:**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/modules/completeness.py
 
@@ -72,6 +78,9 @@
 
 * **modules/cross_repo.py:**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/modules/cross_repo.py
+
+* **modules/obsolete.py:**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/modules/obsolete.py
 
 * **schemas/validate.py (Contract Test Runner — 12/12 passing):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/schemas/validate.py
@@ -119,4 +128,5 @@ python3 test_rules.py             # rule suite (125/125)
 python3 tools/readonly_check.py   # read-only invariant
 python3 tools/privacy_check.py    # no personal data in the snapshot
 python3 tools/run_reports.py     # regenerate all three module reports
+python3 tools/determinism_check.py  # fail if any report changes across processes
 ```

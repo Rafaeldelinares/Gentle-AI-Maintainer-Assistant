@@ -130,7 +130,8 @@ def main():
             if df[(issue["slug"], sig)] <= RARE_MAX:
                 sig_index[(issue["slug"], sig)].append(issue_ref(issue))
 
-    for (slug, sig), members in sig_index.items():
+    for (slug, sig) in sorted(sig_index):
+        members = sig_index[(slug, sig)]
         if len(members) < 2:
             continue
         for a, b in itertools.combinations(sorted(members), 2):
@@ -155,10 +156,11 @@ def main():
     # Candidate pairs from near-identical titles (token index to avoid O(n^2)).
     token_index = collections.defaultdict(list)
     for issue in issues:
-        for token in set(titles[issue_ref(issue)]):
+        for token in sorted(set(titles[issue_ref(issue)])):
             token_index[(issue["slug"], token)].append(issue_ref(issue))
 
-    for (slug, token), members in token_index.items():
+    for (slug, token) in sorted(token_index):
+        members = token_index[(slug, token)]
         if len(members) < 2 or len(members) > 40:
             continue
         for a, b in itertools.combinations(sorted(members), 2):
@@ -168,7 +170,9 @@ def main():
                 add_pair(a, b, 60 + int(ja * 30), "medium", shared)
 
     order = {"high": 0, "medium": 1}
-    ranked = sorted(pairs.items(), key=lambda kv: (-kv[1]["score"], order.get(kv[1]["tier"], 2)))
+    # A total ordering: score, tier, then the pair keys, so the report is byte-identical
+    # across processes regardless of PYTHONHASHSEED-driven set iteration order.
+    ranked = sorted(pairs.items(), key=lambda kv: (-kv[1]["score"], order.get(kv[1]["tier"], 2), kv[0][0], kv[0][1]))
 
     high = [kv for kv in ranked if kv[1]["tier"] == "high"]
     medium = [kv for kv in ranked if kv[1]["tier"] == "medium"]

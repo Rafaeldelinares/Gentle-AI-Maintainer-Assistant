@@ -49,11 +49,12 @@ Last verified against commit `HEAD` (`git rev-parse --short HEAD`) by running ev
 | P-31 | "7.9% lexical-keyword precision (16/202) in gentle-shell" | `python3 tools/metrics.py` (lexical section); definition: gentle-shell issues mentioning `gentle-ai` that carry a cross-system `cross_ref` | **cumplida** | The metric is a lower bound by construction (only indexed links count) |
 | P-32 | "The rule suite passes and is reproducible" | `python3 test_rules.py` → `FINAL TEST RESULT: 125/125 tests passed successfully.` | **cumplida** | Test count will change as cases are added; the file states no frozen total |
 | P-33 | "The data contracts are valid and fail closed" | `python3 schemas/validate.py` → `FINAL RESULT: 12/12 tests passed successfully.` | **cumplida** | None |
-| P-34 | Module D (obsolete issues) exists | — | **sin evidencia** | **Not implemented.** Not claimed in the README today |
+| P-34 | Module D (obsolete issues) exists | `python3 modules/obsolete.py`; report `report-obsolete.md`; checks the vendored checkouts at the commits it cites | **cumplida** | Class A (deleted path) is verifiable but still needs human judgment; Class B is not obsolescence evidence |
 | P-40 | "Module A: completeness — flags open reports missing the fields their own issue form requires" | `python3 modules/completeness.py`; report `report-completeness.md`; templates parsed from `products/<repo>/.github/ISSUE_TEMPLATE/*.yml` | **cumplida** | The signal is deterministic but its precision is not human-verified; issues outside the form are excluded and reported separately |
 | P-41 | "Module B: probable duplicates — correlates shared error signatures and normalized titles" | `python3 modules/duplicates.py`; report `report-duplicates.md`; evidence tiers and per-pair citations | **cumplida** | A shared signature is evidence, not proof; siblings can share identifiers. Never closes or merges |
 | P-42 | "Module C: cross-repository references not captured by `cross_refs`" | `python3 modules/cross_repo.py`; report `report-cross-links.md` | **cumplida** | Only an explicit `repo#N` reference produces a proposed link; bare mentions never do |
-| P-43 | "Reports regenerate deterministically from the frozen snapshot" | `python3 tools/run_reports.py` | **cumplida** | None |
+| P-43 | "Reports regenerate deterministically from the frozen snapshot" | `python3 tools/run_reports.py`; `python3 tools/determinism_check.py` runs each module under two `PYTHONHASHSEED` values and fails if a report changes | **cumplida** | Module D needs the vendored checkouts under `products/` (`./sync-products.sh`) |
+| P-44 | "Module D: possibly obsolete issues — references to deleted source paths, checked against the repository history" | `python3 modules/obsolete.py`; report `report-obsolete.md`; per-issue commit citation | **cumplida** | Two classes kept apart: Class A (deleted path) is verifiable, Class B (unresolved reference) is weak and explicitly not an obsolescence claim |
 | P-35 | "Shadow mode: suggested priority computed without showing or applying it" | — | **sin evidencia** | **Not implemented.** Not claimed in the README today |
 | P-36 | "A labelling tool computes false negatives of P0/P1 and precision per rule from human labels" | — | **sin evidencia** | **Not implemented.** Not claimed in the README today |
 
@@ -68,6 +69,7 @@ Last verified against commit `HEAD` (`git rev-parse --short HEAD`) by running ev
 | H9 never fires on real data | **investigated + widened** | `RE_WORKAROUND_POSITIVE` widened; now 4 real demotions (`gentle-ai#4809`, `#3016`, `gentle-shell#745`, `#1052`); `test_rules.py` §7–8 | **Pending human validation** |
 | Cross-repo coverage: 345 issues mention another repo without a structured link | **quantified by Module C** | `modules/cross_repo.py`: only **33** issues carry an explicit `repo#N` reference; **15** resolve to an open issue; the rest are prose mentions, which are not links | `report-cross-links.md` |
 | Snapshot privacy: maintainer handle inside an issue body | **fixed** | `tools/privacy_check.py` → clean; the handle was redacted, reclassification verified identical before/after | **cumplida** |
+| Module B report changed across processes | **fixed** | `tools/determinism_check.py` → all reports byte-identical; ordering is now total (`-score, tier, pair`), and set iteration is sorted | **cumplida** |
 
 ---
 
@@ -75,5 +77,5 @@ Last verified against commit `HEAD` (`git rev-parse --short HEAD`) by running ev
 
 - **Sustained today:** scale and label census (P-01…P-03), deterministic coverage and its distribution (P-10…P-14, P-16…P-18), read-only invariant (P-20), human authority (P-21, P-23), and the two test suites (P-32, P-33).
 - **Partially sustained:** H9 (P-15, small n), the calibration agreement (P-30, calibration not held-out), H2 as an automated assertion (P-22), the privacy check (P-24), the irreversible-actions check (P-25).
-- **Not sustained / not implemented:** the mechanical modules (P-34), shadow mode (P-35), and the labelling-and-metrics tool (P-36). None of them is claimed in the README today.
+- **Not sustained / not implemented:** shadow mode (P-35) and the labelling-and-metrics tool (P-36). The mechanical modules (P-34, P-40…P-44) are implemented. None of the remaining items is claimed in the README today.
 - **Never claimed and never to be claimed until measured:** precision improvements. Every rule change made after `AUDIT.md` is **pending human validation against a fresh labelled sample**.

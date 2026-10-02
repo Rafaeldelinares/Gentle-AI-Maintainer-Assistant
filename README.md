@@ -95,15 +95,18 @@ The walkthrough uses illustrative, clearly synthetic issue numbers so that no in
 ├── report-completeness.md   # Module A output: reports missing their form's required fields
 ├── report-duplicates.md     # Module B output: probable duplicate pairs with shared evidence
 ├── report-cross-links.md    # Module C output: cross-repo references not in cross_refs
+├── report-obsolete.md       # Module D output: references to deleted source paths
 ├── modules/
 │   ├── common.py            # Shared helpers (snapshot, links, report writer)
 │   ├── templates.py         # Parses each repository's GitHub issue form
 │   ├── completeness.py      # Module A
 │   ├── duplicates.py        # Module B
-│   └── cross_repo.py        # Module C
+│   ├── cross_repo.py        # Module C
+│   └── obsolete.py          # Module D
 ├── tools/
 │   ├── metrics.py                       # Recomputes every published figure
-│   ├── run_reports.py                   # Regenerates all three module reports
+│   ├── run_reports.py                   # Regenerates all module reports
+│   ├── determinism_check.py             # Fails if a report changes across processes
 │   ├── readonly_check.py                # Fails if any source performs a GitHub mutation
 │   └── privacy_check.py                 # Fails if the snapshot carries personal data
 ├── docs/                   # Architectural & design specifications
@@ -192,9 +195,11 @@ The modules do not need labels to be useful: they compare each report with its o
 * [`report-completeness.md`](report-completeness.md) — reports missing required fields.
 * [`report-duplicates.md`](report-duplicates.md) — probable duplicate pairs with shared evidence.
 * [`report-cross-links.md`](report-cross-links.md) — cross-repo references not in `cross_refs`.
+* [`report-obsolete.md`](report-obsolete.md) — references to deleted source paths, with the commit each check ran against.
 
 ```bash
 python3 tools/run_reports.py
+python3 tools/determinism_check.py   # reports must be byte-identical across processes
 ```
 
 ### 8. Review the Agent Prompts

@@ -4,8 +4,9 @@ run_reports.py — Regenerates every module report from the frozen snapshot.
 
   python3 tools/run_reports.py
 
-Runs Module A (completeness), Module B (duplicates) and Module C (cross-repository
-references). Each module is read-only and writes one root Markdown report.
+Runs Module A (completeness), Module B (duplicates), Module C (cross-repository
+references) and Module D (possibly obsolete issues). Each module is read-only and
+writes one root Markdown report.
 """
 
 import subprocess
@@ -17,6 +18,7 @@ MODULES = [
     ("Module A — completeness", ROOT / "modules" / "completeness.py"),
     ("Module B — duplicates", ROOT / "modules" / "duplicates.py"),
     ("Module C — cross-repo links", ROOT / "modules" / "cross_repo.py"),
+    ("Module D — possibly obsolete", ROOT / "modules" / "obsolete.py"),
 ]
 
 

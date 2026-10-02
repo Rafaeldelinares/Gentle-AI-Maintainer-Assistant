@@ -146,3 +146,22 @@
   - *Propose links from bare slug mentions:* rejected — 914 issues mention another repository by name; only 33 carry an explicit reference, and only 15 of those resolve.
   - *Auto-populate `cross_refs`:* rejected — the structured field is maintainer-owned.
 - **Consequence:** the audit's "345" is reframed: 15 explicit, resolving references are actionable; the rest are prose mentions reported as the weakest signal.
+
+## D-016 — Module D separates verifiable obsolescence from an unresolved reference
+
+- **Decision:** Module D reports two classes. **Class A:** a referenced path that exists in the repository's own git history as a deletion and is absent from the current tree — verifiable obsolescence. **Class B:** a path, flag or symbol absent from the checkout with no deletion record — reported as weak evidence and explicitly *not* an obsolescence claim.
+- **Why:** the first implementation reported 194 issues, but inspection showed most were misattributions: `--claude-code` is not a gentle-ai flag string, and `assets/agents/sdd-apply.md` belongs to the installed package layout, not the developer checkout. Mixing those with genuine cases (`internal/components/communitytool/rtk_runtime.go`, deleted in history) would have taught the maintainer to ignore the report.
+- **Alternatives considered:**
+  - *Report every unresolved reference as obsolete:* rejected — it produced a 194-issue list dominated by paths that never existed in this repository.
+  - *Drop the weak class entirely:* rejected — the absence of a reference is still worth seeing, and hiding it would make the module silently incomplete.
+  - *Check `git log -S` per flag to prove a flag once existed:* rejected as too slow for hundreds of tokens; Class B already labels the uncertainty honestly.
+- **Consequence:** Class A lists 54 issues (34 `gentle-ai`, 20 `gentle-shell`); Class B lists 155 issues and is labelled as non-evidence. Every row cites the token, the sentence and the commit.
+
+## D-017 — Module reports must be byte-identical, and a checker enforces it
+
+- **Decision:** every generated report must be identical across processes. Ordering is total (`-score, tier, pair keys`) and any iteration over a `set` of strings is sorted. `tools/determinism_check.py` runs each module twice under different `PYTHONHASHSEED` values and fails if a report changes.
+- **Why:** the promise says reports regenerate deterministically. During delivery 3 a real defect surfaced: Python randomizes string hashing per process, so `for token in set(tokens)` produced a different pair order in `report-duplicates.md` on every run. A reviewer regenerating the report would have seen a spurious diff and lost trust in every other reproducible claim.
+- **Alternatives considered:**
+  - *Set `PYTHONHASHSEED=0` in the runner:* rejected — it hides the defect for direct module runs and depends on the caller.
+  - *Commit a checksum without a checker:* rejected — nothing would catch a regression.
+- **Consequence:** all four reports are byte-identical across seeds; the check is part of the verification suite and cited under P-43.
