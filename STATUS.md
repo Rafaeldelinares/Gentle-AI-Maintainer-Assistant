@@ -5,12 +5,33 @@
 
 ---
 
-## Current Status: Delivery 1 — Post-audit corrections, promise contract and decision log
+## Current Status: Delivery 2 — Mechanical read-only modules (A, B, C)
+
+* **Delivery 1 commits:** `ad7b6b1` (engine corrections, promise contract, decision log), `fc34e85` (privacy redaction + checker).
+* **Delivery 2 content commits:** `b07b282` (modules A/B/C, reports, docs), `8081020` (tier naming consistency).
+* **This STATUS revision:** a documentation-only commit that follows `8081020`.
+* **Date:** 2026-10-02
+* **Tests:** `125/125` rule tests, `12/12` contract tests, read-only check green, privacy check green.
+* **Figures:** recomputed by `python3 tools/metrics.py` and `python3 tools/run_reports.py`; nothing hardcoded.
+
+---
+
+## Delivery 2 — Mechanical modules (this delivery)
+
+Three read-only modules that need **no human labels** to be useful. Full method, embedded source and limits: `MODULES.md`. Reports: `report-completeness.md`, `report-duplicates.md`, `report-cross-links.md`. Regenerate with `python3 tools/run_reports.py`.
+
+* **Module A — completeness.** Parses each repository's real `.github/ISSUE_TEMPLATE/*.yml` and checks whether an open report carries the required fields. Result: 1,114 issues matched to a template, 1,043 filed through the form, **313 missing at least one required content field**; 71 issues outside the form are excluded and reported separately. Attestation checkboxes are reported apart from triage-critical content.
+* **Module B — probable duplicates.** Deterministic evidence only: exception/panic class, error code, `file:line` frame, quoted error string, exit code, normalized titles. Result: **108 candidate pairs, 7 with strong evidence**, 101 weaker. Tiers are named "strong/weaker evidence", never "duplicate"; the report never closes or merges.
+* **Module C — cross-repo links.** A proposed link requires an explicit `repo#N` that resolves to an open issue. Result: 48 explicit references, **15 resolving**, 33 not resolving, 81 unnumbered `owner/repo` references, 914 bare mentions. It reframes `AUDIT.md`'s "345 mentions": the actionable subset is small, and a mention is not a dependency.
+* **Guard:** `tools/readonly_check.py` now also scans `modules/`. No module writes to `cross_refs`, to the dataset, or to GitHub.
+* **Not validated:** none of the three modules has human-verified precision yet. They are deterministic and useful for triage reading, but a maintainer must judge the reports.
+
+---
+
+## Delivery 1 — Post-audit corrections, promise contract and decision log
 
 * **Delivery commit:** `ad7b6b1` — `feat(triage): widen crash vocabulary, recover title_prefix, fix rule order, flag hard signals`
 * **Privacy correction commit:** `fc34e85` — `fix(privacy): redact maintainer handle from snapshot, add privacy check`
-* **This STATUS/EVALUATION revision:** a documentation-only commit that follows `fc34e85`.
-* **Date:** 2026-10-02
 * **Tests:** `125/125` rule tests, `12/12` contract tests, read-only check green.
 * **Figures:** recomputed by `python3 tools/metrics.py`; nothing hardcoded.
 
@@ -73,12 +94,12 @@
 
 ## What is missing (next, in planned order)
 
-1. **Labelling tool for Rafael** (plan item d): stratified sample of 100–150 issues including P0/P1, a template to label, and a script that computes false negatives of P0/P1 and precision per rule with its `n` from human labels only. This unblocks every "pending human validation" claim.
-2. **Mechanical read-only modules** (plan item b): completeness against issue templates, probable duplicates, cross-repo links, possibly-obsolete issues (marked "posible, requiere verificación" with source path and commit).
+1. **Module D — possibly obsolete issues** (plan item b, remaining): detect mentions of deleted files, functions or CLI flags; every suggestion must cite the source path and commit and be marked "posible, requiere verificación".
+2. **Labelling tool for Rafael** (plan item d): stratified sample of 100–150 issues including P0/P1, a template to label, and a script that computes false negatives of P0/P1 and precision per rule with its `n` from human labels only. This unblocks every "pending human validation" claim.
 3. **Shadow mode** (plan item c): compute suggested priority without showing or applying it.
 4. **`REPORT.md` for maintainers** (plan item e): max 15 items per section, every item `verificado_por_humano: no` until reviewed.
 
-The planned order can be reordered only with a recorded decision in `DECISIONS.md`. Priority rationale: the labelling tool comes first because it is the only way to convert the current "pending validation" status into measured facts, and because a maintainer triaging 40 issues needs the tool to earn trust before anything is automated.
+Modules A, B and C are done and delivered. The planned order can be reordered only with a recorded decision in `DECISIONS.md`. Rationale for the current order: Module D completes the mechanical set with the same read-only guarantee; the labelling tool then converts "pending validation" into measured facts; shadow mode and the maintainer report come after, because they should be built on validated signals.
 
 ---
 
