@@ -12,3 +12,4 @@ build/
 .codegraph/
 odd/
 products/
+db/board.db
