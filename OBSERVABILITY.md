@@ -176,7 +176,7 @@
 python3 tools/metrics.py          # every published figure
 python3 db/rules.py               # classification + calibration sample
 python3 test_rules.py             # rule suite (125/125)
-python3 test_board.py             # board domain suite (27/27)
+python3 test_board.py             # board domain suite (76/76)
 .venv/bin/python schemas/validate.py   # contracts (12/12), needs jsonschema
 python3 tools/readonly_check.py   # read-only invariant
 python3 tools/privacy_check.py    # no personal data in the snapshot

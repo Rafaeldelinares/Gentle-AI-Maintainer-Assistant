@@ -38,6 +38,23 @@
 
 ---
 
+## Riesgos abiertos conocidos — sin vía de cierre desde este lado
+
+Tres puntos viajan con el proyecto **abiertos y sin recuperación posible desde este repositorio**.
+No están resueltos ni mitigados: están declarados, que es lo único honesto que se puede hacer con
+ellos desde acá.
+
+| # | Riesgo | Estado real | Vía de cierre |
+| --- | --- | --- | --- |
+| 1 | **Hallazgos sellados de C1a.** `review-7cb7f5fd9a7b5c39` tiene 4 lentes corridas, con hallazgos **producidos y NO LEÍDOS** sobre `board/core.py`, dentro del almacén nativo del proveedor. | Perdidos mientras no los recupere el host. | **Ninguna desde acá.** `external.authorize_recovery` no es una operación del canal de captura, y `recover` exige valores nativos no derivables (D-028). |
+| 2 | **Validación dirigida sin cierre.** La corrección de las contradicciones de recuentos está aplicada y verificada por tests, pero el slot `provider_targeted_validator` no se puede entregar desde la herramienta. | **pendiente**, no cerrada. | Reportar a `gentle-ai` con la reproducción (D-028). |
+| 3 | **C1a y C1b no revisables por separado.** El candidato por rango es `baseRef..HEAD`, así que las unidades anteriores a la cola quedaron fuera del alcance revisable. | Confirmado por medición (ver D-027). | Solo revisando el rango completo, que excede el presupuesto de lentes. |
+
+**Consecuencia que no se disimula:** estos tres puntos viajan con el proyecto. Un lector de este
+documento **no** debe asumir que el lote está íntegramente revisado. **No lo está.**
+
+---
+
 ## Defecto corregido en este documento (y en `BOARD.md` y `TAGS.md`)
 
 La lente de confiabilidad de C3b escaló con `insufficient_evidence` sobre seis afirmaciones de
