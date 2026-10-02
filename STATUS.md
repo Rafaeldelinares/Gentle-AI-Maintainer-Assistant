@@ -270,17 +270,24 @@ Comando único para todas: `python3 tools/metrics.py`.
 
 ## What is missing (next, in planned order)
 
-1. **Vista de sistema:** agregación por clase raíz (313 reportes con los mismos campos faltantes =
+1. **Costuras hexagonales (feature autorizada, alcance A).** Tres extracciones para cerrar
+   tres fugas medidas —el explicador importando 20 internals del motor, el dominio del
+   tablero recibiendo un `conn` crudo, y `sqlite3` dentro del motor— **sin reescritura**. La
+   evidencia y las alternativas rechazadas están en `DECISIONS.md` D-030. El plan vive en
+   `odd/tasks/hexagonal-seams.md`, **fuera de git a propósito** (estado local de Pi), así que
+   un revisor no puede leerlo: por eso el alcance quedó registrado en la raíz. Los puntos 2
+   y 5 de esta lista **dependen** de estas costuras.
+2. **Vista de sistema:** agregación por clase raíz (313 reportes con los mismos campos faltantes =
    un problema de plantilla, no 313 tareas), con límites de WIP y envejecimiento por columna. Es
    lo que hace que el tablero siga sirviendo a los tres meses.
-2. **Cerrar las revisiones de la cola:** C3b (tras este arreglo), y luego C2 + C3a + C3b, cada una
+3. **Cerrar las revisiones de la cola:** C3b (tras este arreglo), y luego C2 + C3a + C3b, cada una
    como su propio rango commiteado, respetando «un commit sin revisar por vez».
-3. **Métricas desde etiquetas humanas:** el tablero ya produce el `veredicto_humano`; falta que
+4. **Métricas desde etiquetas humanas:** el tablero ya produce el `veredicto_humano`; falta que
    una persona etiquete para convertir los «pendiente de validación» en hechos medidos.
-4. **Señales por tarjeta (Módulos B/C/D):** hoy la tarjeta solo muestra banda, regla, flag de
+5. **Señales por tarjeta (Módulos B/C/D):** hoy la tarjeta solo muestra banda, regla, flag de
    mirada humana y campos faltantes del Módulo A. Duplicados, enlaces y obsolescencia siguen a
    nivel de reporte.
-5. **`REPORT.md` para maintainers** (plan item e): máx. 15 ítems por sección, todos
+6. **`REPORT.md` para maintainers** (plan item e): máx. 15 ítems por sección, todos
    `verificado_por_humano: no` hasta que se revisen.
 
 El orden se puede reordenar solo con una decisión registrada en `DECISIONS.md`.
