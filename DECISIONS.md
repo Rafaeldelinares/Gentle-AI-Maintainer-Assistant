@@ -89,9 +89,14 @@
 ## D-010 — No precision claims until a fresh human-labelled sample exists
 
 - **Decision:** post-audit rule changes are marked **"pending human validation"** everywhere. Only coverage and census figures are published as facts.
-- **Why:** the calibration sample is contaminated for these new rules, and the held-out group was already inspected during the audit. Measuring on either would be self-deception.
+- **What "contaminated" means, precisely:**
+  - The **90-issue calibration sample** authored the *original* heuristics (feature/docs/prefix rules), so an agreement figure measured on it for those rules is optimistic. It is contaminated **for those rules**.
+  - The **post-audit changes** (crash vocabulary, rule order, H9 vocabulary) were derived from the full-corpus audit and from `AUDIT.md`, **not** tuned on the 90-issue sample. That sample is therefore *not* the contamination problem for them; the problem is different: the sample is small (34 deterministic matches) and the **held-out group was read during the audit**, so it is no longer blind.
+  - Net effect: no unbiased precision estimate can come from the current data for any rule. Coverage, label census and cross-reference counts are unaffected because they are censuses, not estimators.
+- **Why:** the honest requirement is not "the data is dirty" but "the data is not an independent test set". Reusing it would produce a number that flatters the tool.
 - **Alternatives considered:**
-  - *Report the new precision on the calibration sample:* rejected — the sample was used to author the patterns.
+  - *Report the new precision on the calibration sample:* rejected — the sample was used to author the original patterns and is too small for the new ones.
+  - *Report the new precision on the held-out group:* rejected for now — the audit inspected those issues, so the group is compromised as a blind test; a fresh sample is cheaper than pretending otherwise.
   - *Claim improvement from the coverage delta:* rejected — coverage is not precision; more P1s could mean more false positives.
 - **Consequence:** `PROMISES.md` P-14/P-15 and §5 carry the "pending" status. The owner labels a fresh sample before any precision number is published.
 
@@ -112,3 +117,32 @@
   - *`git commit --amend` after writing the hash:* rejected — it rewrites the hash and leaves a dead reference.
   - *Omit the hash:* rejected — the reviewer needs to match `STATUS.md` against a real commit.
 - **Consequence:** `STATUS.md` always cites a commit that exists.
+
+## D-013 — Module A measures completeness against the repository's own issue form
+
+- **Decision:** parse the real `.github/ISSUE_TEMPLATE/*.yml` of each repository and check whether an open report carries the required fields. Separate required *content* fields from *attestation* checkboxes; report an issue as "outside the form" when it has no template heading.
+- **Why:** asking for information the template already requested is the largest avoidable cost in triage. The template is ground truth authored by the maintainers, so no invented field list is needed.
+- **Alternatives considered:**
+  - *Invent a "good report" checklist:* rejected — it would encode our opinion, not the maintainers'.
+  - *Use only `###` headings as field presence:* rejected — GitHub renders inputs as inline `**Label:** value`, so a heading-only check produced false "missing" on well-formed reports (verified on `gentle-ai#5062`).
+  - *Count attestation checkboxes as missing information:* rejected — a missing pre-flight tick is not missing triage data.
+- **Consequence:** 313 of 1,043 form-filed issues miss at least one required content field; issues outside the form (71) are excluded and reported separately.
+
+## D-014 — Module B uses evidence tiers, never a confidence claim
+
+- **Decision:** duplicates are ranked as "strong evidence" or "weaker evidence" from deterministic signals (rare exception class, error code, `file:line`, quoted error string, exit code, normalized-title equality/Jaccard). The report never says "duplicate"; it says "candidate pair" and marks `veredicto_humano: pendiente`.
+- **Why:** a false duplicate can close a distinct bug, which is more damaging than a missed duplicate. The wording must not invite an automatic close.
+- **Alternatives considered:**
+  - *Label tiers "high/medium confidence":* rejected — the tool cannot measure confidence; it measures shared evidence.
+  - *Call any shared rare signature a duplicate:* rejected — sibling feature issues share exception names and configuration strings (observed on `gentle-shell#446`/`#448`).
+  - *Use embeddings/LLM similarity:* rejected — non-deterministic and unauditable.
+- **Consequence:** 108 candidate pairs, 7 with strong evidence, and an explicit caveat that shared identifiers are evidence, not proof.
+
+## D-015 — Module C proposes a link only from an explicit reference
+
+- **Decision:** a proposed cross-repository link requires an explicit `owner/repo#N` or `repo#N` reference whose number resolves to an open issue. A bare repository-name mention never proposes a link.
+- **Why:** `AUDIT.md` reported "345 issues mention another repo with no structured link", but a mention is not a dependency: install instructions, comparisons and unrelated prose mention repositories. Treating mentions as links would flood the maintainer.
+- **Alternatives considered:**
+  - *Propose links from bare slug mentions:* rejected — 914 issues mention another repository by name; only 33 carry an explicit reference, and only 15 of those resolve.
+  - *Auto-populate `cross_refs`:* rejected — the structured field is maintainer-owned.
+- **Consequence:** the audit's "345" is reframed: 15 explicit, resolving references are actionable; the rest are prose mentions reported as the weakest signal.

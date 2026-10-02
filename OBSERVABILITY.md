@@ -45,6 +45,34 @@
 * **tools/privacy_check.py (Verifies No Personal Data in the Snapshot):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/tools/privacy_check.py
 
+* **tools/run_reports.py (Regenerates All Module Reports):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/tools/run_reports.py
+
+---
+
+## 2b. Mechanical Modules (read-only, no labels needed)
+
+* **MODULES.md (Method, Embedded Code and Limits):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/MODULES.md
+
+* **report-completeness.md (Module A Output — missing required form fields):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/report-completeness.md
+
+* **report-duplicates.md (Module B Output — probable duplicate pairs):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/report-duplicates.md
+
+* **report-cross-links.md (Module C Output — cross-repo references):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/report-cross-links.md
+
+* **modules/completeness.py:**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/modules/completeness.py
+
+* **modules/duplicates.py:**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/modules/duplicates.py
+
+* **modules/cross_repo.py:**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/modules/cross_repo.py
+
 * **schemas/validate.py (Contract Test Runner — 12/12 passing):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/schemas/validate.py
 
@@ -90,4 +118,5 @@ python3 test_rules.py             # rule suite (125/125)
 .venv/bin/python schemas/validate.py   # contracts (12/12), needs jsonschema
 python3 tools/readonly_check.py   # read-only invariant
 python3 tools/privacy_check.py    # no personal data in the snapshot
+python3 tools/run_reports.py     # regenerate all three module reports
 ```

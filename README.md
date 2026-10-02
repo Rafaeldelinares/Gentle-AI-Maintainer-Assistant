@@ -91,9 +91,21 @@ The walkthrough uses illustrative, clearly synthetic issue numbers so that no in
 ├── gold-p0-p1.md           # Human-review gold set for candidate P0 and P1 rule matches
 ├── issues.json             # Sanitized snapshot of 1,228 open issues (no personal data)
 ├── test_rules.py           # Deterministic rule test suite (concrete cases, no frozen totals)
+├── MODULES.md               # Mechanical read-only modules: method, code, outputs, limits
+├── report-completeness.md   # Module A output: reports missing their form's required fields
+├── report-duplicates.md     # Module B output: probable duplicate pairs with shared evidence
+├── report-cross-links.md    # Module C output: cross-repo references not in cross_refs
+├── modules/
+│   ├── common.py            # Shared helpers (snapshot, links, report writer)
+│   ├── templates.py         # Parses each repository's GitHub issue form
+│   ├── completeness.py      # Module A
+│   ├── duplicates.py        # Module B
+│   └── cross_repo.py        # Module C
 ├── tools/
 │   ├── metrics.py                       # Recomputes every published figure
-│   └── readonly_check.py                # Fails if any source performs a GitHub mutation
+│   ├── run_reports.py                   # Regenerates all three module reports
+│   ├── readonly_check.py                # Fails if any source performs a GitHub mutation
+│   └── privacy_check.py                 # Fails if the snapshot carries personal data
 ├── docs/                   # Architectural & design specifications
 │   ├── walkthrough-examples.md          # 4 concrete end-to-end operational examples
 │   ├── phase-1-ecosystem-inspection.md  # Backlog census (1,228 issues)
@@ -172,7 +184,20 @@ python3 test_rules.py
 
 * Read [`gold-p0-p1.md`](gold-p0-p1.md): every issue currently flagged by the deterministic engine, its trigger snippet, and its `veredicto_humano: pendiente` field awaiting maintainer judgment.
 
-### 7. Review the Agent Prompts
+### 7. Review the Mechanical Modules
+
+The modules do not need labels to be useful: they compare each report with its own issue form, correlate duplicates by shared error signatures, and surface cross-repository references.
+
+* [`MODULES.md`](MODULES.md) — method, embedded source and limits.
+* [`report-completeness.md`](report-completeness.md) — reports missing required fields.
+* [`report-duplicates.md`](report-duplicates.md) — probable duplicate pairs with shared evidence.
+* [`report-cross-links.md`](report-cross-links.md) — cross-repo references not in `cross_refs`.
+
+```bash
+python3 tools/run_reports.py
+```
+
+### 8. Review the Agent Prompts
 
 * Inspect [`prompts/system-triage-agent.md`](prompts/system-triage-agent.md) and [`prompts/pass-1-issue-analysis.md`](prompts/pass-1-issue-analysis.md).
 

@@ -49,7 +49,11 @@ Last verified against commit `HEAD` (`git rev-parse --short HEAD`) by running ev
 | P-31 | "7.9% lexical-keyword precision (16/202) in gentle-shell" | `python3 tools/metrics.py` (lexical section); definition: gentle-shell issues mentioning `gentle-ai` that carry a cross-system `cross_ref` | **cumplida** | The metric is a lower bound by construction (only indexed links count) |
 | P-32 | "The rule suite passes and is reproducible" | `python3 test_rules.py` → `FINAL TEST RESULT: 125/125 tests passed successfully.` | **cumplida** | Test count will change as cases are added; the file states no frozen total |
 | P-33 | "The data contracts are valid and fail closed" | `python3 schemas/validate.py` → `FINAL RESULT: 12/12 tests passed successfully.` | **cumplida** | None |
-| P-34 | "The three core modules (completeness, duplicates, cross-repo links, obsolete issues) exist" | — | **sin evidencia** | **Not implemented.** The README does not claim them today; when implemented, this row becomes the evidence row |
+| P-34 | Module D (obsolete issues) exists | — | **sin evidencia** | **Not implemented.** Not claimed in the README today |
+| P-40 | "Module A: completeness — flags open reports missing the fields their own issue form requires" | `python3 modules/completeness.py`; report `report-completeness.md`; templates parsed from `products/<repo>/.github/ISSUE_TEMPLATE/*.yml` | **cumplida** | The signal is deterministic but its precision is not human-verified; issues outside the form are excluded and reported separately |
+| P-41 | "Module B: probable duplicates — correlates shared error signatures and normalized titles" | `python3 modules/duplicates.py`; report `report-duplicates.md`; evidence tiers and per-pair citations | **cumplida** | A shared signature is evidence, not proof; siblings can share identifiers. Never closes or merges |
+| P-42 | "Module C: cross-repository references not captured by `cross_refs`" | `python3 modules/cross_repo.py`; report `report-cross-links.md` | **cumplida** | Only an explicit `repo#N` reference produces a proposed link; bare mentions never do |
+| P-43 | "Reports regenerate deterministically from the frozen snapshot" | `python3 tools/run_reports.py` | **cumplida** | None |
 | P-35 | "Shadow mode: suggested priority computed without showing or applying it" | — | **sin evidencia** | **Not implemented.** Not claimed in the README today |
 | P-36 | "A labelling tool computes false negatives of P0/P1 and precision per rule from human labels" | — | **sin evidencia** | **Not implemented.** Not claimed in the README today |
 
@@ -62,7 +66,7 @@ Last verified against commit `HEAD` (`git rev-parse --short HEAD`) by running ev
 | `feature` rule evaluated before `docs` (`gentle-ai#5168`) | **fixed** | `db/rules.py` explicit-prefix precedence; `test_rules.py` §10; named case `#5168` | **Pending human validation** |
 | `is_bug` blocks `feat:` with hard signals from reaching P0/P1 | **mitigated, not promoted** | `requires_human_review()`; `test_rules.py` §13; 26 issues flagged; band intentionally unchanged | **Pending human validation** |
 | H9 never fires on real data | **investigated + widened** | `RE_WORKAROUND_POSITIVE` widened; now 4 real demotions (`gentle-ai#4809`, `#3016`, `gentle-shell#745`, `#1052`); `test_rules.py` §7–8 | **Pending human validation** |
-| Cross-repo coverage: 345 issues mention another repo without a structured link | **pending** | `AUDIT.md` §10; `tools/metrics.py` cross-repo section | Not started |
+| Cross-repo coverage: 345 issues mention another repo without a structured link | **quantified by Module C** | `modules/cross_repo.py`: only **33** issues carry an explicit `repo#N` reference; **15** resolve to an open issue; the rest are prose mentions, which are not links | `report-cross-links.md` |
 | Snapshot privacy: maintainer handle inside an issue body | **fixed** | `tools/privacy_check.py` → clean; the handle was redacted, reclassification verified identical before/after | **cumplida** |
 
 ---

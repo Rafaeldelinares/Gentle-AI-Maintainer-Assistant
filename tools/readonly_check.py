@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # Only the project's own executable code. `products/` holds third-party checkouts and
 # markdown docs describe procedures rather than execute them.
-SCAN_DIRS = ["db", "schemas", "tools"]
+SCAN_DIRS = ["db", "schemas", "tools", "modules"]
 SCAN_FILES = ["test_rules.py"]
 CODE_SUFFIXES = (".py", ".sh", ".bash", ".sql")
 SELF = Path(__file__).resolve()

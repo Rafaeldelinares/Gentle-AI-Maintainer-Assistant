@@ -50,6 +50,13 @@ This document establishes the authoritative governance protocol and architectura
 * Every post-audit rule change is **pending human validation against a fresh labelled sample**; no precision improvement is claimed.
 * Governed by `PROMISES.md` (claim → evidence → status → gap) and `DECISIONS.md` (decision → alternatives → consequence).
 
+### Phase 1.3: Mechanical Read-Only Modules (Delivery 2)
+* **Module A (Completeness):** parses each repository's `.github/ISSUE_TEMPLATE/*.yml` and flags open reports missing required content fields. `modules/completeness.py` → `report-completeness.md`.
+* **Module B (Probable Duplicates):** correlates shared rare error signatures (exception class, error code, `file:line`, quoted error string, exit code) and normalized titles, in evidence tiers. `modules/duplicates.py` → `report-duplicates.md`.
+* **Module C (Cross-Repo Links):** proposes a link only from an explicit `repo#N` reference that resolves to an open issue; bare name mentions never propose a link. `modules/cross_repo.py` → `report-cross-links.md`.
+* None of the modules needs human labels to be useful, and none writes to GitHub. Regenerate all with `python3 tools/run_reports.py`. Method and limits in `MODULES.md`.
+* **Module D (Possibly obsolete issues):** pending; it must cite the source path and commit for every suggestion.
+
 ### Phase 2: Problem Definition & Operational Boundaries
 * Characterized cross-system coupling edges and the 4 canonical implication patterns ((a)–(d)).
 * Established boundaries: assistant generates inferences; maintainers make decisions.
