@@ -92,6 +92,12 @@ The walkthrough uses illustrative, clearly synthetic issue numbers so that no in
 ├── issues.json             # Sanitized snapshot of 1,228 open issues (no personal data)
 ├── test_rules.py           # Deterministic rule test suite (concrete cases, no frozen totals)
 ├── MODULES.md               # Mechanical read-only modules: method, code, outputs, limits
+├── BOARD.md                 # Local Kanban console: columns, rules, limits (in testing)
+├── GLOSSARY.md              # What P0-P3, the badges and the sidebar mean
+├── TAGS.md                  # Detailed reference for every tag
+├── DETERMINISM.md           # What is deterministic, what is not, what is pending
+├── label-sample.md          # The stratified sample to label by hand (measurement input)
+├── board/                   # Local board: domain, HTTP, static UI
 ├── report-completeness.md   # Module A output: reports missing their form's required fields
 ├── report-duplicates.md     # Module B output: probable duplicate pairs with shared evidence
 ├── report-cross-links.md    # Module C output: cross-repo references not in cross_refs
@@ -105,6 +111,8 @@ The walkthrough uses illustrative, clearly synthetic issue numbers so that no in
 │   └── obsolete.py          # Module D
 ├── tools/
 │   ├── metrics.py                       # Recomputes every published figure
+│   ├── precision_report.py              # Precision from human labels (nothing invented)
+│   ├── label_sample.py                  # Stratified, deterministic labelling sample
 │   ├── run_reports.py                   # Regenerates all module reports
 │   ├── determinism_check.py             # Fails if a report changes across processes
 │   ├── readonly_check.py                # Fails if any source performs a GitHub mutation
@@ -202,7 +210,22 @@ python3 tools/run_reports.py
 python3 tools/determinism_check.py   # reports must be byte-identical across processes
 ```
 
-### 8. Review the Agent Prompts
+### 8. Review the Board (in testing)
+
+A local Kanban console with one board per application. Read-only toward GitHub; human decisions live in a local append-only log.
+
+```bash
+python3 board/server.py --ingest     # http://127.0.0.1:8770/
+```
+
+* [`BOARD.md`](BOARD.md) — how to run it, the columns, the derived-vs-decided split and the limits.
+* [`GLOSSARY.md`](GLOSSARY.md) — what P0–P3, the card badges, `zona gris` and the sidebar mean.
+* [`TAGS.md`](TAGS.md) — the detailed reference for every tag: how it is decided, real examples, what it does *not* mean, and its limits.
+* [`DETERMINISM.md`](DETERMINISM.md) — what is deterministic and how it is verified, what is not and why, whether the system learns from your movements, and what is still pending.
+
+> The port is **8770**, deliberately distinct from the ByBusiness CRM cockpit already serving on `http://localhost:8000/`.
+
+### 9. Review the Agent Prompts
 
 * Inspect [`prompts/system-triage-agent.md`](prompts/system-triage-agent.md) and [`prompts/pass-1-issue-analysis.md`](prompts/pass-1-issue-analysis.md).
 

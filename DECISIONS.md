@@ -165,3 +165,114 @@
   - *Set `PYTHONHASHSEED=0` in the runner:* rejected — it hides the defect for direct module runs and depends on the caller.
   - *Commit a checksum without a checker:* rejected — nothing would catch a regression.
 - **Consequence:** all four reports are byte-identical across seeds; the check is part of the verification suite and cited under P-43.
+
+## D-018 — El estado del tablero vive local, nunca en GitHub
+
+- **Decisión:** el tablero Kanban mantiene su estado en `db/board.db` (SQLite local). GitHub sigue siendo la fuente de verdad de *qué issues existen*; el tablero es la fuente de verdad de *qué decidió el humano*. No existe camino de escritura hacia GitHub.
+- **Por qué:** el proyecto tiene un invariante no negociable de solo lectura sobre repos de terceros. Un Kanban cuyos estados vivieran en GitHub (etiquetas, proyectos, cierres) violaría ese invariante el primer día.
+- **Alternativas consideradas:**
+  - *Usar GitHub Projects:* rechazado — escribe en el repo ajeno.
+  - *Escribir etiquetas "en progreso" desde el tablero:* rechazado — mismo motivo, y además crearía estado público que un maintainer no pidió.
+- **Consecuencia:** el traspaso a un maintainer se hace con una planilla que una persona copia, no con una llamada a la API.
+
+## D-019 — Un tablero por aplicación, sin vista conjunta
+
+- **Decisión:** `gentle-ai`, `engram` y `gentle-shell` tienen tableros separados. Las tarjetas nunca se mezclan y no hay vista "todo junto".
+- **Por qué:** pedido explícito del dueño. Además es correcto: cada repo tiene su propio formulario, su propio ciclo de release y su propio mantenedor; mezclarlos obligaría a comparar cosas que no se comparan.
+- **Alternativas consideradas:**
+  - *Un tablero único con filtro por repo:* rechazado — el filtro por defecto termina siendo "todos", y el ruido vuelve.
+- **Consecuencia:** verificado por `test_board.py`, que comprueba que cada tablero solo contiene tarjetas de su repositorio.
+
+## D-020 — El motor solo puede sugerir columnas de bloqueo
+
+- **Decisión:** el motor sugiere `falta_info` (falta un campo requerido del formulario) o `revision_humana` (candidato P0, o señal dura bajo prefijo no-bug). **Nunca** sugiere `listo_mantener` ni `en_manos`.
+- **Por qué:** promover trabajo hacia un maintainer es un juicio humano. Si el motor pudiera mover hacia adelante, el tablero reproduciría el problema que el proyecto existe para resolver: ruido con apariencia de autoridad.
+- **Alternativas consideradas:**
+  - *Auto-clasificar todo con el motor:* rechazado — convierte una sugerencia en una decisión.
+  - *Permitir que el motor sugiera "listo" cuando la banda es P2/P3:* rechazado — una banda baja no significa que el reporte esté triado.
+- **Consecuencia:** `SUGGESTIBLE_COLUMNS` es una constante cerrada y `test_board.py` verifica que ninguna tarjeta se auto-promueva a una columna positiva.
+
+## D-021 — Registro append-only con proyecciones reconstruibles
+
+- **Decisión:** cada movimiento y cada veredicto se agrega como evento inmutable. `card_state` y `human_labels` son cachés reconstruibles desde ese log, y `tools/board_rebuild_check.py` lo demuestra rompiendo las cachés y reconstruyéndolas.
+- **Por qué:** decir "auditable" sin una prueba es una palabra. El chequeo corre sobre copias temporales y también sobre la base viva, sin tocarla.
+- **Alternativas consideradas:**
+  - *Actualizar el estado en el lugar:* rechazado — se pierde la historia y no se puede auditar ni deshacer.
+  - *Guardar solo el estado actual y un log opcional:* rechazado — el log pasaría a ser decorativo.
+- **Consecuencia:** el log es la única fuente de verdad; el estado es una vista.
+
+## D-022 — Stdlib, puerto 8770, y solo localhost
+
+- **Decisión:** servidor con `http.server` de la stdlib, UI con HTML/JS sin build, puerto **8770** bindeado a `127.0.0.1`. El servidor **rechaza** cualquier otra interfaz.
+- **Por qué:** el puerto 8000 ya lo ocupa el cockpit del CRM de ByBusiness. La filosofía del proyecto es que un revisor pueda leer cada línea: cero dependencias que auditar y cero pipeline de build. Y sin autenticación, exponerlo en la LAN sería un riesgo gratuito.
+- **Alternativas consideradas:**
+  - *FastAPI/uvicorn:* disponible en el entorno, rechazado por superficie de dependencias sin beneficio para servir JSON y HTML.
+  - *Bindear a `0.0.0.0`:* rechazado explícitamente en el arranque del servidor.
+- **Consecuencia:** `python3 board/server.py` es todo lo que hace falta para levantarlo.
+
+## D-023 — La UI está en español y es tonta a propósito
+
+- **Decisión:** la interfaz del tablero está en español; toda la lógica vive en Python (`board/core.py`), el HTTP solo traduce (`board/api.py`) y la UI solo pinta.
+- **Por qué:** es una consola interna que convive con el cockpit de ByBusiness. Y si una regla de negocio se filtra al JavaScript, quedan dos implementaciones que se contradicen y la mitad deja de ser testeable.
+- **Alternativas consideradas:**
+  - *UI en inglés:* rechazado — el contexto de uso es español y no es un producto público; los artefactos técnicos del repo sí siguen en inglés.
+  - *Lógica de validación también en el frontend:* rechazado — duplica reglas.
+- **Consecuencia:** `test_board.py` cubre el dominio completo sin tocar el navegador.
+
+## D-024 — El filtro por etiquetas apaga lo que la tarjeta *lleva*, y es NULL-safe
+
+- **Decisión:** una tarjeta desaparece del Kanban cuando **lleva** la etiqueta que se apagó, sin importar qué otras etiquetas tenga. Las etiquetas son ejes independientes: la banda (`P0`–`P3`, `zona gris`) y las señales (`falta info`, `mirada humana`) no se pisan entre sí.
+- **Por qué:** es la única regla que un maintainer puede predecir sin leer el código: "apagué esto, se fue todo lo que tenía esto". Las alternativas (mostrar si tiene *algún* tag activo, o si tiene *todos*) fallan justo en los issues con más de un tag, que son la mayoría del backlog real.
+- **El defecto que la motivó:** la primera implementación usaba `NOT (band LIKE 'candidato P0%')`. Con `band IS NULL` (zona gris) esa expresión evalúa a `NULL`, y SQL descarta la fila. Apagar `P0` borraba las 9 tarjetas de P0 **más las 461 de zona gris**. El síntoma que reportó el dueño fue "si hay issues con más de un tag no funciona bien".
+- **Alternativas consideradas:**
+  - *Mostrar la tarjeta si al menos un tag suyo está prendido:* rechazado — apagar un tag no tendría efecto sobre los issues multi-tag, que es la queja inversa.
+  - *Mostrar la tarjeta solo si todos sus tags están prendidos:* es equivalente a la regla elegida, pero enunciada al revés y más difícil de leer.
+  - *Filtro inclusivo ("mostrar sólo estos tags"):* rechazado por ahora — agrega un segundo modo y una segunda forma de equivocarse; si hace falta, se agrega como decisión nueva.
+- **Garantía verificable:** `test_board.py` exige que, para cada tablero y cada etiqueta, `visibles_sin_filtro − visibles_con_tag_apagado == conteo_de_ese_tag`, y además que la zona gris sobreviva a apagar cualquier banda.
+- **Consecuencia:** 76 tests del tablero, y la interfaz muestra "mostrando X de Y" para que el efecto del filtro sea visible y comprobable de un vistazo.
+
+## D-025 — El sistema acumula decisiones humanas pero no aprende de ellas
+
+- **Decisión:** el motor **no** ajusta ninguna regla, banda ni sugerencia con el uso. Los movimientos y veredictos se guardan como etiquetas de referencia para *medir*; cambiar una regla es una decisión de ingeniería escrita a mano, con test y registro en `DECISIONS.md`.
+- **Por qué:** si el motor aprendiera de los movimientos, la misma snapshot dejaría de dar el mismo resultado. Dos personas con el mismo backlog obtendrían tableros distintos según lo que hubieran cliqueado antes, y sería imposible auditar por qué sugirió lo que sugirió. Se rompería exactamente el determinismo que `tools/determinism_check.py` acaba de demostrar.
+- **La tensión, dicha de frente:** adaptarse al uso y ser reproducible son dos cosas buenas que se pelean. El proyecto elige **reproducible**, con una salida explícita para mejorar (la sección «cómo se cambiaría una regla» de `DETERMINISM.md`).
+- **Alternativas consideradas:**
+  - *Ajustar pesos con los veredictos (learning-to-rank):* rechazado — sin una muestra grande y held-out, ajustar con decenas de etiquetas es sobreajuste, que es justo lo que la auditoría externa nos marcó. Y volvería el resultado irreproducible.
+  - *Reordenar sugerencias según lo que el humano movió antes:* rechazado por el mismo motivo.
+  - *No guardar nada:* rechazado — sin etiquetas humanas no hay forma de medir precisión nunca.
+- **Garantía verificable:** sobre el mismo snapshot, una base sin decisiones y otra con 40 movimientos y 40 veredictos producen **1.228 de 1.228 sugerencias idénticas**. Está codificado en `test_board.py`: si el motor empezara a aprender solo, el test falla.
+- **Consecuencia:** la capa derivada queda determinista y auditable; la capa de medición (precisión por regla desde etiquetas humanas) queda como el próximo paso, declarada como pendiente y no como hecha.
+
+## D-026 — Las reglas no se editan desde la interfaz; se explican y se versionan
+
+- **Decisión:** el tablero **no** permite editar reglas. Ofrece un **simulador** que muestra qué habría decidido el motor y sobre qué evidencia, y el cambio real se hace en `db/rules.py`, con test y decisión registrada.
+- **Por qué:** reglas editables y guardadas localmente romperían las dos propiedades ya verificadas. El **determinismo**: la misma snapshot dejaría de dar el mismo resultado según lo que cada uno hubiera editado. Y la **auditabilidad**: el revisor externo no puede leer una regla que vive en una base local, así que no podría verificar nada. Además no habría forma de saber contra qué reglas se tomaron las decisiones pasadas.
+- **Alternativas consideradas:**
+  - *Reglas en un `rules.yml` versionado, editables desde la UI y commiteadas por quien edita:* es la única variante coherente, y **queda como opción futura**, pero hoy no se justifica: hay que rediseñar el motor para reglas-como-datos (las expresiones regulares como texto son propensas a error), y el simulador ya cubre la necesidad real, que es **entender y diseñar** un cambio.
+  - *Edición directa en base local:* rechazado — rompe determinismo y auditabilidad, y el cambio se vuelve invisible para el revisor.
+  - *No dar ninguna herramienta:* rechazado — sin forma de ver por qué una regla disparó, discutir una clasificación es adivinar.
+- **Garantía verificable:** el simulador no escribe nada (hay un test que comprueba que la actividad humana no cambia al usarlo), y `explain.py` se compara contra la clasificación real del motor en 400 issues: si el orden de las reglas cambia y el explicador no, el test falla.
+- **Consecuencia:** 69 tests del tablero. Queda pendiente la pieza que convierte los contra-veredictos humanos en **propuestas de regla** accionables; eso sí es un faltante real y está declarado.
+
+## D-027 — Un lote grande se entrega en commits encadenados, y cada uno se revisa como rango commiteado
+
+- **Decisión:** cuando un lote supera lo que la revisión nativa puede abarcar, se parte en **commits encadenados por unidad de trabajo**, y cada unidad se revisa por separado como **rango commiteado** (`baseRef` completo + `committedOnly`), no como estado del árbol de trabajo.
+- **Por qué:** la revisión rechazó el lote completo con `lens_context_budget_exceeded` (4.524 líneas contra las 1.890 que sí pasaron) y no truncó la evidencia: no creó autoridad. La salida que el proveedor prescribe es exactamente ésta. Y hay una razón técnica de fondo: **un rango commiteado es inmutable**, así que un commit posterior no lo invalida; un candidato del árbol de trabajo sí, y de hecho ya invalidó una línea entera hoy.
+- **Alternativas consideradas:**
+  - *Revisar el árbol de trabajo en unidades lógicas sin commitear:* rechazado — la proyección abarca todo el árbol, así que no se puede aislar una unidad sin commitear el resto, y cualquier edición posterior invalida.
+  - *Commitear todo junto y revisar el rango acumulado:* rechazado — es el mismo problema de tamaño, y el contrato dice que el candidato es una unidad de trabajo, nunca la rama acumulada.
+  - *Achicar el lote editando para que entre:* rechazado — sería dejar trabajo afuera para que pase una revisión, que es lo contrario del objetivo.
+- **Consecuencia operativa:** el orden es **commitear la unidad → revisar su rango → seguir con la siguiente**. Eso reemplaza el "congelar → revisar → commitear" que sirve para un candidato único, y explica por qué las dos veces anteriores el mismo error se vio desde dos lados distintos.
+- **Aprendizaje concreto de la fachada:** la forma de pedir un rango commiteado por la herramienta es `{"mode":"ordinary","baseRef":"<commit de 40 caracteres completo>","committedOnly":true}`. Sin `mode` falla con un error que habla de Judgment Day; con el hash corto falla como `base-ref-unresolvable`; y si hay archivos sin seguimiento, pide una selección cuyo binding opaco es difícil de reenviar. Para revisar un rango commiteado conviene que esos archivos no estén: `.git/info/exclude` (local, nunca commiteado) los saca del inventario.
+
+## D-028 — La fachada no puede entregar el slot del validador dirigido (defecto abierto)
+
+- **Qué pasa:** el slot `provider_targeted_validator` no se puede completar desde la herramienta. Su binding opaco incluye `\n` embebidos en `fixClassifications[].proof` y en `policyContent`, que requieren un triple escapado; reproducirlo a mano falló **tres veces en dos líneas distintas**, siempre con `mutation_performed: false`.
+- **Qué NO implica:** no se pierde ni se corrompe nada. La autoridad no se consume, la corrección queda registrada y verificada por tests, y el estado queda en `targeted_validation_required`. Tampoco es un problema del candidato: el mismo binding falló con contenidos distintos.
+- **Qué implica:** la **validación dirigida de una corrección** no se puede cerrar desde acá. El resto del ciclo (lentes, corrección, plan) funciona correctamente.
+- **Salidas, en orden de preferencia:**
+  1. **Declarar la validación como pendiente**, con esa palabra, en `STATUS.md` y `PROMISES.md`. Es lo que se hace hoy: la corrección está aplicada y verificada por tests, pero sin cierre formal.
+  2. Correr el comando nativo que el proveedor renderiza en `submission.argumentTokens`, con el JSON del validador que produce el host relay.
+  3. Reportar el defecto a `gentle-ai` (es su repositorio), con la reproducción: mismo slot, dos contenidos distintos, tres intentos, siempre `capture-binding-rejected`.
+- **Por qué no se arregla acá:** la fachada y el formato del binding son del proveedor, no de este proyecto. Inventar un binding "parecido" sería peor que declarar el pendiente.
+- **Consecuencia:** ninguna afirmación de este repositorio dice que esa validación haya corrido. Donde corresponde, dice **pendiente**.

@@ -82,6 +82,58 @@
 * **modules/obsolete.py:**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/modules/obsolete.py
 
+---
+
+## 2c. Board (local Kanban console, in testing)
+
+* **BOARD.md (How to run it, columns, derived-vs-decided, limits):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/BOARD.md
+
+* **GLOSSARY.md (What P0-P3, the badges and the sidebar mean):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/GLOSSARY.md
+
+* **TAGS.md (Detailed reference for every tag, with real examples and counts):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/TAGS.md
+
+* **DETERMINISM.md (What is deterministic, what is not, whether it learns, what is pending):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/DETERMINISM.md
+
+* **board/core.py (Domain: store, append-only log, ingest, transitions):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/board/core.py
+
+* **board/api.py (HTTP surface; no business logic):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/board/api.py
+
+* **board/explain.py (Why a phrase was classified the way it was; anti-drift with the engine):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/board/explain.py
+
+* **board/server.py (Entry point; localhost only, port 8770):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/board/server.py
+
+* **board/static/index.html:**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/board/static/index.html
+
+* **board/static/app.js:**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/board/static/app.js
+
+* **test_board.py (76 board domain tests):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/test_board.py
+
+* **tools/board_rebuild_check.py (proves the log is the source of truth):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/tools/board_rebuild_check.py
+
+* **tools/precision_report.py (Measures precision from human labels only):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/tools/precision_report.py
+
+* **tools/label_sample.py (Stratified, deterministic, uncontaminated labelling sample):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/tools/label_sample.py
+
+* **label-sample.md (The 120 issues to label by hand):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/label-sample.md
+
+* **tools/verify_all.py (one gate for every check):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/tools/verify_all.py
+
 * **schemas/validate.py (Contract Test Runner — 12/12 passing):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/schemas/validate.py
 
@@ -124,9 +176,13 @@
 python3 tools/metrics.py          # every published figure
 python3 db/rules.py               # classification + calibration sample
 python3 test_rules.py             # rule suite (125/125)
+python3 test_board.py             # board domain suite (27/27)
 .venv/bin/python schemas/validate.py   # contracts (12/12), needs jsonschema
 python3 tools/readonly_check.py   # read-only invariant
 python3 tools/privacy_check.py    # no personal data in the snapshot
-python3 tools/run_reports.py     # regenerate all three module reports
+python3 tools/run_reports.py     # regenerate all module reports
 python3 tools/determinism_check.py  # fail if any report changes across processes
+python3 tools/board_rebuild_check.py # prove the board log is the source of truth
+python3 tools/verify_all.py      # every test and every invariant in one gate
+python3 board/server.py --ingest # local board at http://127.0.0.1:8770/
 ```

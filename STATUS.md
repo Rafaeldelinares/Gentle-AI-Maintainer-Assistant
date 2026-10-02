@@ -5,15 +5,66 @@
 
 ---
 
-## Current Status: Delivery 3 — Module D and deterministic reports
+## Current Status: Delivery 5 — Medición, simulador y determinismo explicado (en revisión)
+
+* **Delivery 4 commits:** pendientes de commit (ver abajo).
+* **Este lote (Delivery 4 + 5) todavía NO está commiteado.** Se congela acá para pasar el ciclo de revisión nativa, y recién después se commitea.
+* **Checks:** `python3 tools/verify_all.py --full` → **10/10**.
+* **Tests:** `test_rules.py` 125 · `test_board.py` 76 · contratos 12.
+
+### Qué entró en este lote
+
+* **Tablero Kanban local** (`board/`), tres tableros separados por aplicación, puerto 8770, solo localhost. Detalle en `BOARD.md`.
+* **Filtro por etiquetas** con contador por tag, y la corrección de un bug real: `NOT (band = 'P1')` con `band IS NULL` descartaba toda la zona gris por el `NULL` de SQL. Ahora `COALESCE` en cada condición y un test que exige que apagar un tag quite exactamente lo que el tag cuenta.
+* **Severidad proporcional** de `falta info` (`N/T`), con color y tooltip.
+* **`explain.py` + simulador de reglas** («Probar una regla»): muestra qué habría decidido el motor, con qué regla y sobre qué evidencia. No escribe nada. Un test compara el explicador contra el motor en 400 issues para que no derive.
+* **Modal «Determinismo y límites»**: qué es determinista y cómo se comprueba, qué no y por qué, si el sistema aprende (no), y qué falta.
+* **`TAGS.md`** y **`GLOSSARY.md`**: explicación detallada de cada etiqueta.
+* **Medición**: `tools/precision_report.py` (falsos negativos de P0/P1, precisión por regla con `n` e intervalo de Wilson) y `tools/label_sample.py` → `label-sample.md` (120 issues estratificados, 12 P0 y 13 P1, sin contaminar).
+* **Determinismo verificado**: se extendió `tools/determinism_check.py` a la proyección derivada del tablero, que antes no estaba cubierta.
+
+### Estado de las revisiones nativas — nada de esto está "cerrado"
+
+| Unidad | Contenido | Revisión nativa |
+| --- | --- | --- |
+| **C1a** — dominio y auditoría (`2d59094`) | 665 líneas | **línea abierta**, 4 lentes pendientes |
+| **Unidad de índices y chequeos** (375 líneas) | docs + `tools/determinism_check`, `metrics`, `readonly_check` | 4 lentes **corrieron** → 1 CRITICAL (contradicciones de recuentos, corregidas en 8 líneas). **Validación dirigida PENDIENTE** por el defecto D-028 |
+| **C1b, C2, C3** | el resto del lote | sin revisar todavía; se revisan como rangos commiteados |
+
+* **Hallazgos reales encontrados por las lentes:** **6 CRITICAL**, todos introducidos por este trabajo y todos corregidos — path traversal en `/static/`, 500 por input inválido, README con el árbol roto, actor forjable, carrera en `move_card`, y contradicciones de recuentos en la documentación. Ninguno llegó a un revisor humano.
+* **Validación dirigida pendiente (D-028):** la corrección de esas contradicciones está aplicada y verificada por tests, pero **no tiene cierre formal**: la fachada no puede entregar el slot `provider_targeted_validator`. Se declara **pendiente**, no cerrada.
+* **Precisión sin medir**: el instrumento existe, las etiquetas humanas son 0. La cifra está pendiente de que una persona etiquete.
+* **Vista de sistema, pasada de LLM sobre la zona gris, propuestas de regla, `REPORT.md` y modo sombra**: no implementados.
+
+### Por qué sigue sin commitear a propósito
+
+Commitear mueve la proyección del workspace e invalida la revisión en curso. El orden es: **congelar → revisar → commitear**. Los dos errores anteriores (commitear antes de revisar, y editar después de congelar) fueron el mismo error visto de dos lados.
+
+---
+
+## Delivery 4 — Tablero Kanban local, tres tableros separados (en pruebas)
 
 * **Delivery 1 commits:** `ad7b6b1` (engine corrections, promise contract, decision log), `fc34e85` (privacy redaction + checker).
 * **Delivery 2 commits:** `b07b282` (modules A/B/C, reports, docs), `8081020` (tier naming consistency).
 * **Delivery 3 content commit:** `7638f09` (Module D, report determinism fix, `tools/determinism_check.py`).
-* **This STATUS revision:** a documentation-only commit that follows `7638f09`.
+* **This STATUS revision:** a documentation-only commit that follows the Delivery 4 content commit.
 * **Date:** 2026-10-02
-* **Tests:** `125/125` rule tests, `12/12` contract tests, read-only green, privacy green, reports byte-identical across processes.
-* **Figures:** recomputed by `python3 tools/metrics.py` and `python3 tools/run_reports.py`; nothing hardcoded.
+* **Checks:** no se repiten acá: el primer bloque de este documento es el único que declara recuentos vigentes.
+* **Figures:** recomputed by `python3 tools/metrics.py`; nothing hardcoded.
+
+---
+
+## Delivery 4 — Tablero Kanban local (en pruebas)
+
+Consola local en `http://127.0.0.1:8770/`, **un tablero por aplicación**, sin mezclar. Puerto distinto del 8000 que ocupa el cockpit del CRM de ByBusiness. Detalle completo en `BOARD.md`.
+
+* **Modelo:** estado en SQLite local (`db/board.db`, fuera de git) + log **append-only**. `card_state` y `human_labels` son cachés reconstruibles desde eventos; `tools/board_rebuild_check.py` lo demuestra rompiendo las cachés y reconstruyéndolas.
+* **Regla de diseño central:** el motor **solo sugiere columnas de bloqueo** (`falta_info`, `revision_humana`). Nunca sugiere `listo_mantener` ni `en_manos`: promover trabajo hacia un maintainer es un juicio humano. Verificado por tests.
+* **Distribución derivada** (antes de que nadie mueva nada, snapshot `39553742aa7bf1ea`): `gentle-ai` 733 = 492 entrada + 231 falta info + 10 revisión; `gentle-shell` 424 = 272 + 146 + 6; `engram` 71 = 60 + 7 + 4. Ninguna tarjeta arranca en columnas positivas.
+* **Sin red saliente:** `tools/readonly_check.py` ahora falla ante `http.client`, `urllib.request` o `requests` en cualquier parte del proyecto. El tablero no puede escribir en GitHub porque no tiene cliente HTTP.
+* **Solo localhost:** el servidor rechaza cualquier interfaz que no sea `127.0.0.1`. Sin autenticación, a propósito.
+* **Auditoría del diseño:** decisiones D-018 a D-023 en `DECISIONS.md` (estado local, tableros separados, solo bloqueos, log append-only, stdlib+puerto, UI en español).
+* **No validado:** el tablero no tiene uso real todavía; las señales de los Módulos B, C y D **no** se muestran aún como badge por tarjeta (siguen a nivel de reporte).
 
 ---
 
@@ -106,11 +157,12 @@ Three read-only modules that need **no human labels** to be useful. Full method,
 
 ## What is missing (next, in planned order)
 
-1. **Labelling tool for Rafael** (plan item d): stratified sample of 100–150 issues including P0/P1, a template to label, and a script that computes false negatives of P0/P1 and precision per rule with its `n` from human labels only. This unblocks every "pending human validation" claim.
-2. **Shadow mode** (plan item c): compute suggested priority without showing or applying it.
-3. **`REPORT.md` for maintainers** (plan item e): max 15 items per section, every item `verificado_por_humano: no` until reviewed.
+1. **Señales por tarjeta (Módulos B/C/D):** hoy solo banda, regla, flag de mirada humana y campos faltantes del Módulo A se muestran en la tarjeta. Duplicados, enlaces cruzados y obsolescencia siguen a nivel de reporte.
+2. **Vista de sistema:** agregación por clase raíz (313 reportes con los mismos campos faltantes = un problema de plantilla, no 313 tareas), con límites de WIP y envejecimiento por columna. Es lo que hace que el tablero siga sirviendo a los tres meses.
+3. **Métricas desde etiquetas humanas:** el tablero ya produce el `veredicto_humano`; falta el script que calcule falsos negativos de P0/P1 y precisión por regla con su `n`. Es lo único que convierte los "pendiente de validación" en hechos medidos.
+4. **`REPORT.md` para maintainers** (plan item e): máx. 15 ítems por sección, todos `verificado_por_humano: no` hasta que se revisen.
 
-Modules A, B, C and D are done and delivered. The planned order can be reordered only with a recorded decision in `DECISIONS.md`. Rationale: the labelling tool converts "pending validation" into measured facts; shadow mode and the maintainer report come after, because they should be built on validated signals.
+El orden se puede reordenar solo con una decisión registrada en `DECISIONS.md`.
 
 ---
 

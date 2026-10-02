@@ -19,6 +19,8 @@
 | What is not done? | Module D (obsolete issues), shadow mode, labelling tool | `PROMISES.md` §4 |
 | Do the mechanical modules exist? | Yes: completeness (A), duplicates (B), cross-repo links (C), possibly-obsolete (D). Read-only, no labels needed | `MODULES.md`, `python3 tools/run_reports.py` |
 | Are the reports reproducible? | Yes, byte-identical across processes | `python3 tools/determinism_check.py` |
+| Is there a board? | Yes: a local Kanban console with one board per application, in testing | `python3 board/server.py --ingest` → 127.0.0.1:8770 |
+| One gate for everything? | 10/10 checks in one command (`--full`) | `python3 tools/verify_all.py --full` |
 | Tests | `125/125` rule tests, `12/12` contract tests | this file §2 and §3 |
 
 > **Honesty note.** Coverage is a census, not a correctness measure. The crash vocabulary and the rule order were changed after the adversarial audit; **no precision improvement is claimed** until a maintainer labels a fresh sample.
@@ -1429,8 +1431,29 @@ Each decision, its alternatives and its consequences are recorded in `DECISIONS.
 * `PROMISES.md` — every README claim mapped to evidence, status and gap.
 * `DECISIONS.md` — design decisions with alternatives considered.
 * `AUDIT.md` — the read-only adversarial audit that found the gaps above.
-* `MODULES.md` — the mechanical read-only modules (completeness, duplicates, cross-repo links) with embedded source and limits.
+* `MODULES.md` — the mechanical read-only modules (completeness, duplicates, cross-repo links, possibly obsolete) with embedded source and limits.
+* `BOARD.md` — the local Kanban console: columns, derived-vs-decided split, append-only log and limits.
 * `STATUS.md` — current state, commit hashes, and what the owner must decide.
+
+---
+
+## 12. Local Kanban Board (in testing)
+
+A local console on `http://127.0.0.1:8770/` with **one board per application** (`gentle-ai`, `engram`, `gentle-shell`), never mixed. Five working columns plus an archive.
+
+| Aspect | Decision |
+| --- | --- |
+| State location | Local SQLite (`db/board.db`, gitignored). GitHub stays the source of truth for *what exists*; the board is the source of truth for *what a human decided* |
+| Engine suggestions | Only **blocking** columns: `falta_info` (Module A) and `revision_humana` (candidate P0 or a hard signal under a non-bug prefix). Never `listo_mantener` |
+| Human actions | Moving a card and setting the human verdict; both append to an immutable event log |
+| Auditability | `tools/board_rebuild_check.py` wrecks the caches, rebuilds them from events and compares — on a temporary copy and on the live DB |
+| Outbound network | None. `tools/readonly_check.py` now fails on `http.client`, `urllib.request` or `requests` anywhere in the project |
+| Exposure | `127.0.0.1` only; the server refuses any other interface. Port 8770, distinct from the CRM cockpit on 8000 |
+| UI language | Spanish (internal console). Repository artifacts remain English |
+
+`test_board.py` covers 76 assertions, including that no card is auto-promoted to a positive column, that repositories are never mixed, and that the projections are reconstructible from the log.
+
+**Not yet integrated per card:** Module B (duplicates), Module C (cross-repo links) and Module D (possibly obsolete) signals remain report-level; only band, rule, human-review flag and Module A missing fields show as card badges today.
 
 ---
 

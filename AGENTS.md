@@ -57,6 +57,14 @@ This document establishes the authoritative governance protocol and architectura
 * **Module D (Possibly Obsolete Issues):** separates Class A (a referenced path deleted in the repository's own history — verifiable obsolescence, 54 issues) from Class B (an unresolved reference with no deletion record — weak, explicitly not an obsolescence claim, 155 issues). `modules/obsolete.py` → `report-obsolete.md`, citing the commit each check ran against.
 * None of the modules needs human labels to be useful, and none writes to GitHub. Regenerate all with `python3 tools/run_reports.py`. Method and limits in `MODULES.md`.
 
+### Phase 1.4: Tablero Kanban local (en pruebas)
+* **Tres tableros separados, uno por aplicación** (`gentle-ai`, `engram`, `gentle-shell`); nunca mezclados. `board/core.py`.
+* **Estado local**, no en GitHub: SQLite en `db/board.db` (fuera de git) más un log append-only. GitHub sigue siendo la fuente de verdad de qué issues existen.
+* **El motor solo sugiere columnas de bloqueo** (`falta_info`, `revision_humana`); nunca `listo_mantener` ni `en_manos`. Mover una tarjeta y fijar el veredicto humano son decisiones de una persona.
+* **Sin red saliente**: `tools/readonly_check.py` ahora también falla ante cualquier cliente HTTP en el código del proyecto.
+* **Solo localhost**, puerto **8770** (el 8000 lo ocupa el cockpit del CRM de ByBusiness). El servidor rechaza cualquier otra interfaz.
+* Verificación: `test_board.py` (27), `tools/board_rebuild_check.py`, `tools/verify_all.py`. Método y límites en `BOARD.md`.
+
 ### Phase 2: Problem Definition & Operational Boundaries
 * Characterized cross-system coupling edges and the 4 canonical implication patterns ((a)–(d)).
 * Established boundaries: assistant generates inferences; maintainers make decisions.

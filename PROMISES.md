@@ -55,6 +55,29 @@ Last verified against commit `HEAD` (`git rev-parse --short HEAD`) by running ev
 | P-42 | "Module C: cross-repository references not captured by `cross_refs`" | `python3 modules/cross_repo.py`; report `report-cross-links.md` | **cumplida** | Only an explicit `repo#N` reference produces a proposed link; bare mentions never do |
 | P-43 | "Reports regenerate deterministically from the frozen snapshot" | `python3 tools/run_reports.py`; `python3 tools/determinism_check.py` runs each module under two `PYTHONHASHSEED` values and fails if a report changes | **cumplida** | Module D needs the vendored checkouts under `products/` (`./sync-products.sh`) |
 | P-44 | "Module D: possibly obsolete issues — references to deleted source paths, checked against the repository history" | `python3 modules/obsolete.py`; report `report-obsolete.md`; per-issue commit citation | **cumplida** | Two classes kept apart: Class A (deleted path) is verifiable, Class B (unresolved reference) is weak and explicitly not an obsolescence claim |
+
+## 4b. Board (local Kanban console)
+
+| # | Promise | Evidence | Status | What is missing |
+| --- | --- | --- | --- | --- |
+| P-50 | "Local Kanban board, one per application, never mixed" | `python3 board/server.py --ingest` → `http://127.0.0.1:8770/`; `test_board.py` asserts each board contains only its repository's cards | **cumplida** | In testing; no real-usage validation yet |
+| P-51 | "The board never writes to GitHub" | The board has no outbound HTTP client at all; `tools/readonly_check.py` now fails on `http.client`, `urllib.request` or `requests` anywhere in the project | **cumplida** | Static check; it cannot prove absence of a future manual action |
+| P-52 | "The engine only suggests blocking columns; promoting to a maintainer is human" | `board/core.py` `SUGGESTIBLE_COLUMNS`; `test_board.py` asserts no card is auto-promoted to `listo_mantener` or `en_manos` | **cumplida** | None |
+| P-53 | "Every human action is append-only and the state is reconstructible from the log" | `python3 tools/board_rebuild_check.py` wrecks the caches, rebuilds from events and compares, on a temporary copy and on the live DB | **cumplida** | None |
+| P-54 | "The board never fills `veredicto_humano`" | The engine writes no verdict event; `test_board.py` asserts no label was written by an `engine%` actor | **cumplida** | The UI still lets a human choose it, by design |
+| P-55 | "Local only: no LAN exposure, no auth needed" | `board/server.py` refuses any host other than `127.0.0.1`/`localhost`/`::1`; default port 8770, distinct from the CRM cockpit on 8000 | **cumplida** | None |
+| P-58 | "The derived layer is deterministic: the same snapshot yields the same result byte for byte" | `python3 tools/determinism_check.py` → engine digest stable across `PYTHONHASHSEED` 1/7/99, four module reports byte-identical, board derived projection byte-identical | **cumplida** | Deterministic *within* a snapshot; when the snapshot changes the figures change, which is why its hash is always shown |
+| P-59 | "The system does not learn from human movements" | `test_board.py` asserts 1,228/1,228 identical suggestions with and without 40 human decisions on the same snapshot | **cumplida** | Deliberate: learning would break P-58 (see `DECISIONS.md` D-025) |
+| P-61 | "The board can explain why any phrase was classified the way it was" | Button «Probar una regla»; `POST /api/simulate`; `board/explain.py` | **cumplida** | The simulated band is what the engine *would* decide, not a truth |
+| P-62 | "The simulator writes nothing" | `test_board.py` and a live check: human activity is identical before and after simulating | **cumplida** | None |
+| P-63 | "The explainer cannot drift from the engine" | `test_board.py` compares `explain()` against the real classification for 400 snapshot issues | **cumplida** | Covers 400 of 1,228 (a sample, for test speed) |
+| P-64 | "Rules are not editable from the UI" | No write path exists; `DECISIONS.md` D-026 | **cumplida** | Deliberate: UI-edited local rules would break P-58 and make the rules invisible to the external reviewer |
+| P-66 | "Precision is measured from human labels only" | `python3 tools/precision_report.py` — reads `human_labels` + the event log, computes P0/P1 false negatives, per-rule precision with its `n`, and a Wilson 95% interval | **cumplida (el instrumento)** | The instrument exists and is tested against a synthetic scenario. With **0 human labels** it reports «no disponible» rather than inventing a number. The figure itself is **pending labels** |
+| P-67 | "The labelling sample is stratified, deterministic and uncontaminated" | `python3 tools/label_sample.py --write` → `label-sample.md`; ordering from `sha256('label:'+ref)`; excludes the calibration sample and the held-out group the audit inspected | **cumplida** | 120 issues selected (12 P0, 13 P1, 30 P2, 8 P3, 57 grey) out of 928 eligible; 90 excluded for contamination |
+| P-65 | "Human counter-verdicts become rule proposals" | — | **sin evidencia** | **Not implemented.** Listed as pending in `DETERMINISM.md` |
+| P-60 | "The board shows what is still missing, in the app" | Button «Determinismo y límites» in the board; `DETERMINISM.md` in the root | **cumplida** | The list is maintained by hand; it is not generated |
+| P-56 | "Module B/C/D signals appear as per-card badges" | — | **sin evidencia** | **Not implemented.** Only band, rule, human-review flag and Module A missing fields are per-card today; B/C/D remain report-level |
+| P-57 | "Two views: cards and a system view aggregated by root class" | — | **sin evidencia** | **Not implemented** (planned as E4) |
 | P-35 | "Shadow mode: suggested priority computed without showing or applying it" | — | **sin evidencia** | **Not implemented.** Not claimed in the README today |
 | P-36 | "A labelling tool computes false negatives of P0/P1 and precision per rule from human labels" | — | **sin evidencia** | **Not implemented.** Not claimed in the README today |
 
@@ -73,9 +96,12 @@ Last verified against commit `HEAD` (`git rev-parse --short HEAD`) by running ev
 
 ---
 
+| P-68 | "Every unit of this delivery passed native review" | `STATUS.md` states the exact state per unit | **sin evidencia (parcial)** | **Not true and not claimed.** C1a's review is open with 4 lenses pending; one unit's 4 lenses ran and produced a CRITICAL that was corrected, but its **targeted validation is pending** (D-028, facade defect); the remaining units are committed and not yet reviewed |
+| P-69 | "No unit closed a review it did not close" | `DECISIONS.md` D-028; no figure or claim in this repo asserts a completed validation | **cumplida** | The word used everywhere is **pendiente** |
+
 ## 6. Honest summary
 
 - **Sustained today:** scale and label census (P-01…P-03), deterministic coverage and its distribution (P-10…P-14, P-16…P-18), read-only invariant (P-20), human authority (P-21, P-23), and the two test suites (P-32, P-33).
 - **Partially sustained:** H9 (P-15, small n), the calibration agreement (P-30, calibration not held-out), H2 as an automated assertion (P-22), the privacy check (P-24), the irreversible-actions check (P-25).
-- **Not sustained / not implemented:** shadow mode (P-35) and the labelling-and-metrics tool (P-36). The mechanical modules (P-34, P-40…P-44) are implemented. None of the remaining items is claimed in the README today.
+- **Not sustained / not implemented:** the remaining board work (P-56, P-57), shadow mode (P-35) and the labelling-and-metrics tool (P-36). The mechanical modules (P-34, P-40…P-44) and the board core (P-50…P-55) are implemented. None of the remaining items is claimed in the README today.
 - **Never claimed and never to be claimed until measured:** precision improvements. Every rule change made after `AUDIT.md` is **pending human validation against a fresh labelled sample**.
