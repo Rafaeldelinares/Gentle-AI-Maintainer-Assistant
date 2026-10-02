@@ -273,46 +273,6 @@
 - **Shared evidence:** quoted:invalid rctx2 repository context
 - **veredicto_humano:** pendiente
 
-### gentle-ai#4488 <> gentle-ai#4491
-- **A:** bug(review): intended-untracked selection fails with schema-incompatible
-  - https://github.com/Gentleman-Programming/gentle-ai/issues/4488
-- **B:** bug(review): lens captures reject as different session route after two admissions; START replay then fails candidate-vie
-  - https://github.com/Gentleman-Programming/gentle-ai/issues/4491
-- **Shared evidence:** quoted:resolve-native-operation-failure
-- **veredicto_humano:** pendiente
-
-### gentle-ai#4488 <> gentle-ai#4902
-- **A:** bug(review): intended-untracked selection fails with schema-incompatible
-  - https://github.com/Gentleman-Programming/gentle-ai/issues/4488
-- **B:** bug(review): capture-validation reports no mutation after terminal validator escalation
-  - https://github.com/Gentleman-Programming/gentle-ai/issues/4902
-- **Shared evidence:** quoted:resolve-native-operation-failure
-- **veredicto_humano:** pendiente
-
-### gentle-ai#4488 <> gentle-ai#4952
-- **A:** bug(review): intended-untracked selection fails with schema-incompatible
-  - https://github.com/Gentleman-Programming/gentle-ai/issues/4488
-- **B:** fix(review): START rejects candidate accepted by inspect
-  - https://github.com/Gentleman-Programming/gentle-ai/issues/4952
-- **Shared evidence:** quoted:resolve-native-operation-failure
-- **veredicto_humano:** pendiente
-
-### gentle-ai#4491 <> gentle-ai#4902
-- **A:** bug(review): lens captures reject as different session route after two admissions; START replay then fails candidate-vie
-  - https://github.com/Gentleman-Programming/gentle-ai/issues/4491
-- **B:** bug(review): capture-validation reports no mutation after terminal validator escalation
-  - https://github.com/Gentleman-Programming/gentle-ai/issues/4902
-- **Shared evidence:** quoted:resolve-native-operation-failure
-- **veredicto_humano:** pendiente
-
-### gentle-ai#4902 <> gentle-ai#4952
-- **A:** bug(review): capture-validation reports no mutation after terminal validator escalation
-  - https://github.com/Gentleman-Programming/gentle-ai/issues/4902
-- **B:** fix(review): START rejects candidate accepted by inspect
-  - https://github.com/Gentleman-Programming/gentle-ai/issues/4952
-- **Shared evidence:** quoted:resolve-native-operation-failure
-- **veredicto_humano:** pendiente
-
 ### gentle-ai#2196 <> gentle-ai#4491
 - **A:** bug(review): fresh candidate rejected before native START
   - https://github.com/Gentleman-Programming/gentle-ai/issues/2196
@@ -335,6 +295,46 @@
 - **B:** fix(review): START rejects candidate accepted by inspect
   - https://github.com/Gentleman-Programming/gentle-ai/issues/4952
 - **Shared evidence:** quoted:candidate-view-invalid
+- **veredicto_humano:** pendiente
+
+### gentle-ai#4491 <> gentle-ai#4857
+- **A:** bug(review): lens captures reject as different session route after two admissions; START replay then fails candidate-vie
+  - https://github.com/Gentleman-Programming/gentle-ai/issues/4491
+- **B:** bug(review): candidate-view materializes a full 5.2 GB worktree copy for a 16-path candidate, times out at a 10s git add
+  - https://github.com/Gentleman-Programming/gentle-ai/issues/4857
+- **Shared evidence:** quoted:candidate-view-invalid
+- **veredicto_humano:** pendiente
+
+### gentle-ai#4857 <> gentle-ai#4952
+- **A:** bug(review): candidate-view materializes a full 5.2 GB worktree copy for a 16-path candidate, times out at a 10s git add
+  - https://github.com/Gentleman-Programming/gentle-ai/issues/4857
+- **B:** fix(review): START rejects candidate accepted by inspect
+  - https://github.com/Gentleman-Programming/gentle-ai/issues/4952
+- **Shared evidence:** quoted:candidate-view-invalid
+- **veredicto_humano:** pendiente
+
+### gentle-ai#4488 <> gentle-ai#4491
+- **A:** bug(review): intended-untracked selection fails with schema-incompatible
+  - https://github.com/Gentleman-Programming/gentle-ai/issues/4488
+- **B:** bug(review): lens captures reject as different session route after two admissions; START replay then fails candidate-vie
+  - https://github.com/Gentleman-Programming/gentle-ai/issues/4491
+- **Shared evidence:** quoted:resolve-native-operation-failure
+- **veredicto_humano:** pendiente
+
+### gentle-ai#4488 <> gentle-ai#4902
+- **A:** bug(review): intended-untracked selection fails with schema-incompatible
+  - https://github.com/Gentleman-Programming/gentle-ai/issues/4488
+- **B:** bug(review): capture-validation reports no mutation after terminal validator escalation
+  - https://github.com/Gentleman-Programming/gentle-ai/issues/4902
+- **Shared evidence:** quoted:resolve-native-operation-failure
+- **veredicto_humano:** pendiente
+
+### gentle-ai#4488 <> gentle-ai#4952
+- **A:** bug(review): intended-untracked selection fails with schema-incompatible
+  - https://github.com/Gentleman-Programming/gentle-ai/issues/4488
+- **B:** fix(review): START rejects candidate accepted by inspect
+  - https://github.com/Gentleman-Programming/gentle-ai/issues/4952
+- **Shared evidence:** quoted:resolve-native-operation-failure
 - **veredicto_humano:** pendiente
 
 ## Limits
