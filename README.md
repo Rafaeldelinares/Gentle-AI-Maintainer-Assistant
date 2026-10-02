@@ -52,6 +52,18 @@ This proposal is backed by empirical research on the real 1,228 issue dataset:
 
 ---
 
+## 📖 End-to-End Walkthrough & Practical Examples
+
+For a concrete, step-by-step demonstration of how the tool processes real issues:
+👉 **[Read the Full Walkthrough with 4 Concrete Examples (`docs/walkthrough-examples.md`)](docs/walkthrough-examples.md)**
+
+* **Example 1 (Deterministic Fast-Path):** A runtime panic in `gentle-ai#5166` categorized as **P1** in <5 ms with 0 tokens.
+* **Example 2 (Residual Grey-Area with Workaround):** A CLI path failure in `gentle-ai#712` where Rule H9 detects a manual workaround and demotes it from P1 to **P2**.
+* **Example 3 (Cross-System Asymmetric Escrow):** An issue reported in `gentle-shell#142` whose root cause is inside `engram`, routed via Asymmetric Escrow without closing or losing it.
+* **Example 4 (Maintainer Dashboard & Human Decision):** The interactive view presented to maintainers and the resulting immutable decision contract.
+
+---
+
 ## 📂 Project Structure
 
 ```
@@ -59,6 +71,7 @@ This proposal is backed by empirical research on the real 1,228 issue dataset:
 ├── README.md               # You are here: proposal overview & evaluation guide
 ├── AGENTS.md               # Governance contract and development protocol (Phases 0-7)
 ├── docs/                   # Architectural & design specifications
+│   ├── walkthrough-examples.md          # 4 concrete end-to-end operational examples
 │   ├── phase-1-ecosystem-inspection.md  # Backlog census (1,228 issues, commit shares)
 │   ├── problem-definition.md            # Problem framing & boundaries
 │   ├── architecture.md                  # Two-pass pipeline architecture
@@ -118,6 +131,9 @@ python3 db/rules.py
 
 If you or your AI agent need direct, absolute links to inspect the core files:
 
+* **End-to-End Walkthrough & Examples (`walkthrough-examples.md`):**
+  * GitHub UI: https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/docs/walkthrough-examples.md
+  * Raw Markdown: https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/docs/walkthrough-examples.md
 * **Deterministic Rules Engine (`rules.py`):**
   * GitHub UI: https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/db/rules.py
   * Raw Code: https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/db/rules.py
