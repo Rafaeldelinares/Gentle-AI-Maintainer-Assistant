@@ -103,7 +103,7 @@ Four bands, anchored to the vocabulary that already exists in the ecosystem.
 
 | Band | Anchor label | Meaning | Operational Boundary |
 | --- | --- | --- | --- |
-| **P0** | `priority:critical` | breaks something fundamental, silent data loss, corruption, or security exposure | Verified data loss/corruption or security breach. |
+| **P0** | `priority:critical` | breaks something fundamental, silent data loss, corruption, or security exposure | Verified data loss/corruption or security breach. When the deterministic engine matches a silent-data-loss pattern, it emits strictly **`candidato P0, requiere revisión humana`** (candidate P0 requiring human review), never a final P0. |
 | **P1** | `priority:high` | serious, hard blocker in production **with NO workaround and NO retry recovery** | Workflow is dead-ended. User cannot proceed by manual steps or retries. |
 | **P2** | `priority:medium` | degrades functionality, **OR a workaround exists, OR intermittent recovery via retry, OR feature request** | Annoyance, UX spam, or manual config edit exists to unblock. All feature requests. |
 | **P3** | `priority:low` | cosmetic, documentation, question, chore, minor discussion | Purely informational or non-actionable as reported. |
@@ -147,7 +147,7 @@ A band is produced by the **first** rule that matches, top to bottom.
 | H7 | A **maintainer override always wins** and is recorded as a decision. |
 | H8 | Pass-1 bands are **provisional**. Pass 2 may correct them, and the correction is recorded. |
 | H9 | **Workaround & Retry rule (P1 vs P2):** If a documented or accessible manual workaround exists, or if the failure is intermittent and recovers upon retry, the issue **MUST** be classified as P2, never P1. P1 is strictly reserved for dead-ends with no viable escape hatch. |
-| H10 | **Deterministic Pre-Filter Rule (Code > LLM):** Issues matching unambiguous structural patterns (`feat:` prefix -> P2, `docs:`/`chore:` -> P3, `panic:`/`SIGSEGV` -> P1, `silent corruption` -> P0) are classified deterministically by code without invoking an LLM. |
+| H10 | **Deterministic Pre-Filter Rule (Code > LLM):** Issues matching unambiguous structural patterns (`feat:` prefix -> P2, `docs:`/`chore:` -> P3, `panic:`/`SIGSEGV` -> P1, silent corruption -> **`candidato P0, requiere revisión humana`**) are classified deterministically by code without invoking an LLM. A deterministic P0 is always a candidate requiring human review, never a final decision. Negations (`no/without/not ... data loss`, `is not a deadlock`) and fix descriptions never fire, and `deadlock` requires process/thread context. |
 
 ---
 

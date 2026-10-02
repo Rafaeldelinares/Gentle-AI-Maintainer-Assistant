@@ -27,7 +27,8 @@ Siguen el estándar de contratos de `gentle-ai/contracts/`:
 
 2. **Soporte de Pipeline Híbrido (Código vs LLM)**:
    `triage-inference` implementa una discriminación condicional (`allOf` + `if/then`):
-   - Si `source == "deterministic_rule"`, exige `rule_name` (`rule:feature_request`, `rule:docs_chore_question`, `rule:silent_data_loss`, `rule:hard_crash`), fija `model: null` y `confidence: "high"`.
+   - Si `source == "deterministic_rule"`, exige `rule_name` (`rule:feature_request`, `rule:docs_chore_question`, `rule:candidato_p0_requiere_revision_humana`, `rule:hard_crash`, `rule:crash_with_workaround_demoted_to_p2`), fija `model: null` y `confidence: "high"`.
+   - El invariante de gobernanza se aplica en ambas direcciones: `band == "candidato P0, requiere revisión humana"` exige `rule:candidato_p0_requiere_revision_humana`, y esa regla no puede emitir un `P0` final.
    - Si `source == "llm_judge"`, exige el nombre del `model` y deja `rule_name: null`.
 
 3. **Política Calibrada de P1 vs P2**:

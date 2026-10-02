@@ -24,6 +24,7 @@ SCHEMA_FIXTURE_MAP = [
     ("triage-inference.schema.json", [
         "triage-inference-deterministic.fixture.json",
         "triage-inference-llm.fixture.json",
+        "triage-inference-p0-candidate.fixture.json",
     ]),
     ("maintainer-decision.schema.json", [
         "maintainer-decision-accept.fixture.json",
@@ -134,6 +135,32 @@ def main():
         return 1
     except jsonschema.ValidationError:
         print("✔ Neg test 3 OK: invented band P4 is rejected as expected")
+        passed_count += 1
+
+    # Neg 4: candidate P0 label emitted with a non-candidate rule must fail closed
+    total_count += 1
+    bad_candidate = load_json(FIXTURES_DIR / "triage-inference-p0-candidate.fixture.json")
+    bad_candidate["rule_name"] = "rule:feature_request"
+    try:
+        validator = validator_for(schemas["triage-inference.schema.json"])(schemas["triage-inference.schema.json"])
+        validator.validate(bad_candidate)
+        print("❌ Negative test failed: candidate P0 label with wrong rule was accepted", file=sys.stderr)
+        return 1
+    except jsonschema.ValidationError:
+        print("✔ Neg test 4 OK: candidate P0 label requires rule:candidato_p0_requiere_revision_humana")
+        passed_count += 1
+
+    # Neg 5: silent data loss must never be emitted as a final P0 by a deterministic rule
+    total_count += 1
+    bad_final_p0 = load_json(FIXTURES_DIR / "triage-inference-p0-candidate.fixture.json")
+    bad_final_p0["band"] = "P0"
+    try:
+        validator = validator_for(schemas["triage-inference.schema.json"])(schemas["triage-inference.schema.json"])
+        validator.validate(bad_final_p0)
+        print("❌ Negative test failed: final P0 with candidate rule was accepted", file=sys.stderr)
+        return 1
+    except jsonschema.ValidationError:
+        print("✔ Neg test 5 OK: deterministic candidate rule cannot emit a final P0 band")
         passed_count += 1
 
     print("\n────────────────────────────────────────────────────────────────────")

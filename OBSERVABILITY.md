@@ -19,9 +19,12 @@
 
 ---
 
-## 2. Code & Test Artifacts (Phase 1)
+## 2. Code & Test Artifacts (Phase 1.1)
 
-* **test_rules.py (Deterministic Rules Test Suite - 48/48 Passing):**  
+* **gold-p0-p1.md (Human-Review Gold Set for Candidate P0 and P1):**  
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/gold-p0-p1.md
+
+* **test_rules.py (Deterministic Rules Test Suite - 77/77 Passing, concrete cases):**  
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/test_rules.py
 
 * **db/rules.py (Deterministic Rule Engine):**  
@@ -43,7 +46,7 @@
 * **LICENSE (MIT License):**  
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/LICENSE
 
-* **schemas/validate.py (Schema Test Runner - 9/9 Passing):**  
+* **schemas/validate.py (Schema Test Runner - 12/12 Passing):**  
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/schemas/validate.py
 
 * **docs/triage-model.md (Triage Model, 13 Dimensions, Rules H1–H10):**  

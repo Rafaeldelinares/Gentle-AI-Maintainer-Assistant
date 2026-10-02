@@ -36,8 +36,9 @@
         null,
         "rule:feature_request",
         "rule:docs_chore_question",
-        "rule:silent_data_loss",
-        "rule:hard_crash"
+        "rule:candidato_p0_requiere_revision_humana",
+        "rule:hard_crash",
+        "rule:crash_with_workaround_demoted_to_p2"
       ]
     },
     "model": {
@@ -45,7 +46,8 @@
     },
     "band": {
       "type": "string",
-      "enum": ["P0", "P1", "P2", "P3"]
+      "description": "Recommended priority band. A deterministic silent-data-loss match MUST emit 'candidato P0, requiere revisión humana' (candidate P0 requiring human review), never a final P0.",
+      "enum": ["P0", "candidato P0, requiere revisión humana", "P1", "P2", "P3"]
     },
     "confidence": {
       "type": "string",
@@ -111,6 +113,31 @@
         "properties": {
           "model": { "type": "string", "minLength": 1 },
           "rule_name": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "band": { "const": "candidato P0, requiere revisión humana" }
+        }
+      },
+      "then": {
+        "properties": {
+          "source": { "const": "deterministic_rule" },
+          "rule_name": { "const": "rule:candidato_p0_requiere_revision_humana" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "rule_name": { "const": "rule:candidato_p0_requiere_revision_humana" }
+        }
+      },
+      "then": {
+        "properties": {
+          "band": { "const": "candidato P0, requiere revisión humana" }
         }
       }
     }

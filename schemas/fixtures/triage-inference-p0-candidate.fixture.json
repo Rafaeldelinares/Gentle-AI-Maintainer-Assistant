@@ -1,0 +1,27 @@
+{
+  "schema": "gentle-ai.maintainer-assistant.triage-inference/v1",
+  "issue_ref": {
+    "system_slug": "gentle-ai",
+    "number": 4917
+  },
+  "source": "deterministic_rule",
+  "rule_name": "rule:candidato_p0_requiere_revision_humana",
+  "model": null,
+  "band": "candidato P0, requiere revisión humana",
+  "confidence": "high",
+  "operational_rationale": "Deterministic silent-data-loss pattern matched. Emitted strictly as a candidate P0 requiring human review, never as a final decision; a maintainer must confirm before any priority is applied.",
+  "reasons": [
+    "Issue reports a registry entry silently dropped on corrupt custom-agents.json",
+    "Silent data loss patterns are never resolved autonomously by this assistant"
+  ],
+  "citations": [
+    "A corrupt custom-agents.json silently drops the registry entry of a successful install"
+  ],
+  "cross_system": {
+    "classification": "none",
+    "target_system_slug": null,
+    "explanation": "No foreign-system reference detected for this candidate."
+  },
+  "border_ambiguity": null,
+  "evaluated_at": "2026-10-02T01:15:00Z"
+}

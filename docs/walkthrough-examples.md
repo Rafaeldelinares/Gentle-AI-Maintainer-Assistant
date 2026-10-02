@@ -3,6 +3,8 @@
 > **How Gentle AI Maintainer Assistant operates on real-world issues.**
 >
 > This document provides concrete, end-to-end demonstrations of how incoming issues flow through the architecture: from deterministic code filtering to calibrated LLM reasoning, schema validation, and maintainer resolution.
+>
+> **Illustrative data:** the issue numbers in these examples are clearly marked synthetic (`9001`–`9003`) so that no invented scenario is attributed to a real ticket. Verified real-issue examples live in [`EVALUATION.md`](../EVALUATION.md) §7 and [`gold-p0-p1.md`](../gold-p0-p1.md).
 
 ---
 
@@ -17,7 +19,7 @@
         └─────────────┬─────────────┘
                       │
          ┌────────────┴────────────┐
-         │ (39% of backlog)        │ (61% grey-area)
+         │ (39.3% of backlog)        │ (60.7% grey-area)
          ▼                         ▼
    [ Instant P0-P3 ]        ┌───────────────────────────────┐
    Zero cost / 5 ms         │ LLM Pass 1 (A-Priori Analysis)│
@@ -46,7 +48,7 @@
 
 ### 1. Ingested Issue
 * **Repository:** `gentle-ai`
-* **Issue #:** `5166`
+* **Issue #:** `9001` (synthetic)
 * **Title:** `fatal error: runtime panic: nil pointer dereference in session_view`
 * **Body:**
   ```text
@@ -71,7 +73,7 @@ The issue is evaluated by the deterministic pre-filter:
   "contract_version": "v1",
   "issue": {
     "repository": "gentle-ai",
-    "issue_number": 5166
+    "issue_number": 9001
   },
   "priority": {
     "band": "P1",
@@ -109,7 +111,7 @@ The issue is evaluated by the deterministic pre-filter:
 
 ### 1. Ingested Issue
 * **Repository:** `gentle-ai`
-* **Issue #:** `712`
+* **Issue #:** `9002` (synthetic)
 * **Title:** `review command fails when target directory path has trailing slash`
 * **Body:**
   ```text
@@ -143,7 +145,7 @@ The LLM evaluates the 13 dimensions:
   "contract_version": "v1",
   "issue": {
     "repository": "gentle-ai",
-    "issue_number": 712
+    "issue_number": 9002
   },
   "priority": {
     "band": "P2",
@@ -181,7 +183,7 @@ The LLM evaluates the 13 dimensions:
 
 ### 1. Ingested Issue
 * **Repository:** `gentle-shell` (formerly `gentle-pi`)
-* **Issue #:** `142`
+* **Issue #:** `9003` (synthetic)
 * **Title:** `agent memory retrieval fails with SQLite FTS5 syntax error`
 * **Body:**
   ```text
@@ -207,7 +209,7 @@ The LLM evaluates the 13 dimensions:
   "contract_version": "v1",
   "issue": {
     "repository": "gentle-shell",
-    "issue_number": 142
+    "issue_number": 9003
   },
   "priority": {
     "band": "P1",
@@ -232,7 +234,7 @@ When maintainers review triaged issues, they see a concise Markdown/TUI view sep
 
 ```markdown
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ ISSUE: gentle-ai#712                                                     │
+│ ISSUE: gentle-ai#9002                                                     │
 │ TITLE: review command fails when target directory path has trailing slash│
 ├──────────────────────────────────────────────────────────────────────────┤
 │ 📋 HECHOS VERIFICABLES (Datos Objetivos)                                 │
@@ -262,7 +264,7 @@ When the maintainer presses **`[A]` (Aceptar)**, an authoritative `maintainer-de
   "contract_version": "v1",
   "issue": {
     "repository": "gentle-ai",
-    "issue_number": 712
+    "issue_number": 9002
   },
   "action": "accept",
   "decided_band": "P2",

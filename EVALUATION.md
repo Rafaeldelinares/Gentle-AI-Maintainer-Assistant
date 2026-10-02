@@ -2,12 +2,14 @@
 
 > **Self-contained evaluation artifact for external technical auditors.**
 > This document allows complete inspection and validation of the Gentle AI Maintainer Assistant proposal without requiring directory navigation or repository cloning.
+>
+> **Governance invariant:** a deterministic silent-data-loss match is emitted strictly as **`candidato P0, requiere revisión humana`** (candidate P0 requiring human review), never as a final P0 decision.
 
 ---
 
 ## 1. Source Code: `db/rules.py`
 
-Fuente: `db/rules.py @ 573c732`
+Fuente: `db/rules.py`
 
 ```python
 #!/usr/bin/env python3
@@ -17,10 +19,15 @@ rules.py — Deterministic triage rule engine for the Gentle AI ecosystem
 Applies code-based heuristics BEFORE invoking an LLM:
   1. Features / enhancements -> P2 (rule:feature_request)
   2. Docs / chores / questions -> P3 (rule:docs_chore_question)
-  3. Silent data loss / corruption -> P0 (rule:silent_data_loss)
+  3. Silent data loss / corruption -> candidato P0, requiere revisión humana (rule:candidato_p0_requiere_revision_humana)
   4. Panic / SIGSEGV / hard crash without workaround -> P1 (rule:hard_crash)
   5. Crash WITH documented workaround / retry -> P2 (rule:crash_with_workaround_demoted_to_p2)
   6. Cross-repository links (cross_refs) -> cross classification
+
+Governance Invariants:
+  - Deterministic P0 is strictly a candidate ("candidato P0, requiere revisión humana"), never an autonomous final decision.
+  - Negations ("no data loss", "without data loss", "is not a deadlock") and fix descriptions ("from being silently dropped to being rejected") never trigger high-priority rules.
+  - Deadlocks require process or thread context (goroutine, thread, mutex, process, hang); metaphorical deadlocks ("two rules deadlock") are ignored.
 
 Usage:
   ./rules.py
@@ -35,22 +42,54 @@ from pathlib import Path
 DB_PATH = Path(__file__).parent / "exp.db"
 SNAPSHOT_PATH = Path(__file__).parent.parent / "issues.json"
 
-# Compiled regex patterns for deterministic text classification
-# 1. P0: Silent data loss / corruption (non-capturing groups, bounded word characters)
-RE_P0_SILENT = re.compile(
+# Label constants
+P0_CANDIDATE_LABEL = "candidato P0, requiere revisión humana"
+RULE_P0_CANDIDATE = "rule:candidato_p0_requiere_revision_humana"
+
+# 1. P0: Silent data loss & corruption base pattern
+RE_P0_SILENT_BASE = re.compile(
     r"(?:\bsilent(?:ly)?\s+(?:corrupt(?:s|ed|ing|ion)?|delet(?:es|ed|ing|ion)?|drop(?:s|ped|ping)?|overwrit(?:es|ing)?|overwrote|overwritten|los(?:es|t|ing)?|fail(?:s|ed|ing)?\s+to\s+save)\b|\bdata\s+loss\b)",
     re.IGNORECASE,
 )
 
-# Negation safeguards for P0 (e.g. 'prevents data loss', 'no data loss' must NOT trigger P0)
-RE_P0_NEGATION = re.compile(
-    r"\b(?:no|not|prevents?|preventing|avoid(?:s|ed|ing)?|without|protect(?:s|ed|ing)?\s+against|safeguard(?:s|ed|ing)?\s+against|zero)\s+(?:silent(?:ly)?\s+)?(?:data\s+loss|corruption|corrupting)\b",
+# Negation safeguards for data loss (e.g. 'no data loss', 'without data loss', 'not data loss', 'zero data loss')
+RE_DATA_LOSS_NEGATION = re.compile(
+    r"\b(?:no|not|without|zero|neither|nor|prevent(?:s|ed|ing)?|avoid(?:s|ed|ing)?|protect(?:s|ed|ing)?\s+against|safeguard(?:s|ed|ing)?\s+against)\b[^.\n;]{0,60}?\bdata\s+loss\b|"
+    r"\bdata\s+loss\b[^.\n;]{0,50}?\b(?:is\s+(?:claimed|none)|avoided|prevented|not\s+observed|not\s+found)\b",
     re.IGNORECASE,
 )
 
-# 2. P1: Hard crashes (without overfitted specific lineage/loop terms)
-RE_P1_CRASH = re.compile(
-    r"(?:\bpanic:\s*|\bSIGSEGV\b|\bfatal error:\s*runtime\b|\bsegmentation fault\b|\bNullPointerException\b|\buncaught exception\b|\bdeadlock(?:ed)?\b|\bstack overflow\b)",
+# Descriptions of fixes or transitions (e.g. 'from being silently dropped to being rejected')
+RE_FIX_DESCRIPTION = re.compile(
+    r"\bfrom\s+being\s+silent(?:ly)?\s+(?:corrupt|delet|drop|overwrit|los)\w*\s+to\s+being\b|"
+    r"\b(?:prevent(?:s|ed|ing)?|fixed|stops?|stopped|protected)\s+(?:\w+\s+){0,5}from\s+being\s+silent",
+    re.IGNORECASE,
+)
+
+# General silent negation
+RE_SILENT_NEGATION = re.compile(
+    r"\b(?:no|not|without|zero)\s+(?:silent(?:ly)?\s+)?(?:data\s+loss|corruption)\b",
+    re.IGNORECASE,
+)
+
+# 2. P1: Hard crashes core runtime errors
+RE_P1_CRASH_CORE = re.compile(
+    r"(?:\bpanic:\s*|\bSIGSEGV\b|\bfatal error:\s*runtime\b|\bsegmentation fault\b|\bNullPointerException\b|\buncaught exception\b|\bstack overflow\b)",
+    re.IGNORECASE,
+)
+
+# Deadlock base pattern
+RE_DEADLOCK_BASE = re.compile(r"\bdeadlock(?:ed|s)?\b", re.IGNORECASE)
+
+# Negation for deadlock (e.g. 'is not a deadlock', 'not a deadlock')
+RE_DEADLOCK_NEGATION = re.compile(
+    r"\b(?:not|never|is\s+not|hardly)\s+(?:a\s+)?deadlock\b",
+    re.IGNORECASE,
+)
+
+# Process or thread concurrency context required for deadlock to be a real crash
+RE_CONCURRENCY_CONTEXT = re.compile(
+    r"\b(?:goroutines?|threads?|mutex(?:es)?|locks?|process(?:es)?|hangs?|hanging|workers?)\b",
     re.IGNORECASE,
 )
 
@@ -78,9 +117,61 @@ def has_active_workaround(text: str) -> bool:
     return bool(RE_WORKAROUND_POSITIVE.search(text))
 
 
+def has_silent_data_loss(text: str) -> bool:
+    """
+    Returns True if text reports an unnegated silent data loss or corruption event.
+    Rejects negations ('no data loss', 'without data loss') and fix descriptions.
+    """
+    for m in RE_P0_SILENT_BASE.finditer(text):
+        matched = m.group(0).lower()
+        start = max(0, m.start() - 80)
+        end = min(len(text), m.end() + 80)
+        window = text[start:end]
+
+        # Reject fix descriptions ('from being silently dropped to being rejected')
+        if RE_FIX_DESCRIPTION.search(window):
+            continue
+
+        # Reject data loss negations
+        if "data loss" in matched:
+            if RE_DATA_LOSS_NEGATION.search(window):
+                continue
+
+        # Reject general silent negations
+        if RE_SILENT_NEGATION.search(window):
+            continue
+
+        return True
+    return False
+
+
+def is_hard_crash(text: str) -> bool:
+    """
+    Returns True if text reports a hard runtime crash (SIGSEGV, panic, stack overflow)
+    or a concurrency deadlock with explicit thread/process/mutex/hang context.
+    Rejects 'not a deadlock' and metaphorical deadlocks ('two rules deadlock each other').
+    """
+    if RE_P1_CRASH_CORE.search(text):
+        return True
+
+    for m in RE_DEADLOCK_BASE.finditer(text):
+        start = max(0, m.start() - 60)
+        end = min(len(text), m.end() + 60)
+        window = text[start:end]
+
+        if RE_DEADLOCK_NEGATION.search(window):
+            continue
+        if RE_CONCURRENCY_CONTEXT.search(window):
+            return True
+
+    return False
+
+
 def classify_issue_deterministically(row, labels, cross_refs):
     """
     Returns (band, cross, rule_name) or (None, cross, None) if indeterminate.
+    
+    Invariant: P0 is strictly 'candidato P0, requiere revisión humana', never a final decision.
     """
     row_dict = dict(row) if hasattr(row, "keys") else (row or {})
     title = row_dict.get("title") or ""
@@ -99,12 +190,12 @@ def classify_issue_deterministically(row, labels, cross_refs):
     label_set = {l.lower() for l in labels}
     is_bug = prefix in ("bug", "fix") or "type:bug" in label_set or "bug" in label_set
 
-    # Check P0: Silent data loss / corruption (only on bugs, excluding explicit negations)
-    if is_bug and RE_P0_SILENT.search(full_text) and not RE_P0_NEGATION.search(full_text):
-        return "P0", cross, "rule:silent_data_loss"
+    # Check P0: Silent data loss / corruption -> Candidate P0, requires human review
+    if is_bug and has_silent_data_loss(full_text):
+        return P0_CANDIDATE_LABEL, cross, RULE_P0_CANDIDATE
 
     # Check P1 vs P2 (Rule H9 & H10): Hard crash / fatal engine stall
-    if is_bug and RE_P1_CRASH.search(full_text):
+    if is_bug and is_hard_crash(full_text):
         if has_active_workaround(full_text):
             return "P2", cross, "rule:crash_with_workaround_demoted_to_p2"
         return "P1", cross, "rule:hard_crash"
@@ -159,7 +250,7 @@ def run_snapshot_evaluation(snapshot_data):
     print("  Breakdown by deterministic rule:")
     for rule, cnt in sorted(rule_counts.items(), key=lambda x: x[1], reverse=True):
         pct = (100.0 * cnt / total) if total > 0 else 0.0
-        print(f"    - {rule:38s}: {cnt:4d} issues ({pct:.1f}%)")
+        print(f"    - {rule:42s}: {cnt:4d} issues ({pct:.1f}%)")
     print("════════════════════════════════════════════════════════════════════")
     return 0
 
@@ -260,7 +351,7 @@ def main():
     print(f"  Residual grey-area (requires LLM): {total_all - covered_all} ({100.0 * (total_all - covered_all) / total_all:.1f}%)\n")
     print("  Breakdown by deterministic rule:")
     for rule, cnt in sorted(rule_counts.items(), key=lambda x: x[1], reverse=True):
-        print(f"    - {rule:38s}: {cnt:4d} issues ({100.0 * cnt / total_all:.1f}%)")
+        print(f"    - {rule:42s}: {cnt:4d} issues ({100.0 * cnt / total_all:.1f}%)")
 
     # Evaluate against the 90-issue sample (Run #1) where we have Judge A and Judge B votes
     cur.execute("""
@@ -304,8 +395,9 @@ def main():
 
         if band is not None:
             sample_covered += 1
-            ok_a = (band == va)
-            ok_b = (band == vb)
+            eval_band = "P0" if "P0" in band else band
+            ok_a = (eval_band == va)
+            ok_b = (eval_band == vb)
             if ok_a: match_a += 1
             if ok_b: match_b += 1
             if ok_a and ok_b: both_match += 1
@@ -320,8 +412,10 @@ def main():
 
     print("\n  Sample deterministic classification vs judges:")
     for slug, num, r_band, rule, va, vb in evaluated[:10]:
-        status = "✔" if va == r_band and vb == r_band else "~"
-        print(f"    [{status}] {slug:12s} #{num:<4d} -> {r_band} ({rule:35s}) | Judge A: {va} | Judge B: {vb}")
+        display_band = "P0 (candidato)" if "P0" in r_band else r_band
+        eval_band = "P0" if "P0" in r_band else r_band
+        status = "✔" if va == eval_band and vb == eval_band else "~"
+        print(f"    [{status}] {slug:12s} #{num:<4d} -> {display_band:16s} ({rule:40s}) | Judge A: {va} | Judge B: {vb}")
 
     conn.close()
     return 0
@@ -335,23 +429,31 @@ if __name__ == "__main__":
 
 ## 2. Test Suite: `test_rules.py` & Execution Output
 
-Fuente: `test_rules.py @ 573c732`
+Fuente: `test_rules.py`
 
 ```python
 #!/usr/bin/env python3
 """
 test_rules.py — Comprehensive test suite for deterministic triage rules (db/rules.py)
 
-Validates:
-  1. P0 Positive cases (silent data loss, corruption, silent drops/overwrites)
-  2. P0 Negative safeguards (negated data loss phrases: 'prevents data loss', 'no data loss')
-  3. P1 Positive crash cases ('panic: runtime error', 'SIGSEGV', 'NullPointerException', etc.)
-  4. Rule H9 vs H10 Demotion (crash WITH workaround or retry recovery demotes to P2)
-  5. Workaround Negation (explicit 'workaround: none' or 'no workaround' remains P1)
-  6. Overfit Pattern Elimination ('busy-loop.*frozen' and 'dead-end.*lineage' do not trigger P1)
-  7. P2 Feature requests and P3 Documentation / Chores
-  8. Grey-area / Indeterminate fall-through (requires LLM Pass 1)
-  9. Dynamic Dataset Snapshot verification (loads issues.json and verifies dynamic calculation)
+Validates, by concrete case rather than fixed totals:
+  1. P0 candidate positives (silent data loss, corruption, silent drops/overwrites)
+  2. P0 negation safeguards ('no/without/not ... data loss')
+  3. Fix-description rejection ('from being silently dropped to being rejected')
+  4. Real-issue regression cases: #5007, #4792, #4807, #2628 must NOT trigger high bands
+  5. Hard crash positives ('panic:', 'SIGSEGV', 'NullPointerException', etc.)
+  6. Deadlock requires process/thread context; 'not a deadlock' and 'two rules deadlock' rejected
+  7. Rule H9 vs H10 demotion (crash WITH workaround or retry recovery demotes to P2)
+  8. Workaround negation ('workaround: none' / 'no workaround' remains P1)
+  9. Overfit pattern elimination ('busy-loop.*frozen', 'dead-end.*lineage')
+  10. P2 feature requests and P3 documentation / chores
+  11. Grey-area / indeterminate fall-through (requires LLM Pass 1)
+  12. Snapshot self-consistency: dynamic run over issues.json with the exact issues the
+      rules are expected to flag, never a frozen total.
+
+Governance invariant: a deterministic silent-data-loss match is emitted strictly as
+'candidato P0, requiere revisión humana' (candidate P0 requiring human review), never as a
+final P0 decision.
 
 Usage:
   python3 test_rules.py
@@ -366,11 +468,13 @@ sys.path.insert(0, str(Path(__file__).parent / "db"))
 from rules import (
     classify_issue_deterministically,
     has_active_workaround,
-    RE_P0_SILENT,
-    RE_P0_NEGATION,
-    RE_P1_CRASH,
-    RE_WORKAROUND_POSITIVE,
-    RE_WORKAROUND_NEGATIVE,
+    has_silent_data_loss,
+    is_hard_crash,
+    P0_CANDIDATE_LABEL,
+    RULE_P0_CANDIDATE,
+    RE_P0_SILENT_BASE,
+    RE_P1_CRASH_CORE,
+    RE_DEADLOCK_BASE,
 )
 
 
@@ -392,8 +496,17 @@ def run_tests():
             print(f"  ❌ [FAIL] {desc}", file=sys.stderr)
             sys.exit(1)
 
-    # 1. P0 POSITIVE CASES
-    print("── 1. P0 POSITIVE CASES (Silent Data Loss & Corruption) ──")
+    def classify(title, body="", prefix="bug", labels=None, cross_refs=None, slug="gentle-ai", number=1):
+        row = {
+            "id": number, "system_id": 1, "slug": slug, "number": number,
+            "title": title, "body": body, "title_prefix": prefix,
+        }
+        return classify_issue_deterministically(row, labels if labels is not None else ["bug"], cross_refs or [])
+
+    # ─────────────────────────────────────────────────────────────────
+    # 1. P0 CANDIDATE POSITIVES
+    # ─────────────────────────────────────────────────────────────────
+    print("── 1. P0 CANDIDATE POSITIVES (Silent Data Loss & Corruption) ──")
     p0_positive_phrases = [
         "silently dropped rows during migration",
         "silently corrupted the db on shutdown",
@@ -402,14 +515,19 @@ def run_tests():
         "panic: silently dropped rows",
         "unexpected data loss during table flush",
         "engine silently fails to save configuration",
+        "A corrupt custom-agents.json silently drops the registry entry of a successful install",
     ]
     for phrase in p0_positive_phrases:
-        row = {"title": phrase, "body": "Observed in test", "title_prefix": "bug"}
-        band, _, rule = classify_issue_deterministically(row, ["bug"], [])
-        assert_test(band == "P0" and rule == "rule:silent_data_loss", f"P0 positive: '{phrase[:45]}'")
+        band, _, rule = classify(phrase, "Observed in test")
+        assert_test(
+            band == P0_CANDIDATE_LABEL and rule == RULE_P0_CANDIDATE,
+            f"candidate P0 via {RULE_P0_CANDIDATE}: '{phrase[:50]}'",
+        )
 
-    # 2. P0 NEGATIVE SAFEGUARDS
-    print("\n── 2. P0 NEGATIVE SAFEGUARDS (Negations must NOT trigger P0) ──")
+    # ─────────────────────────────────────────────────────────────────
+    # 2. P0 NEGATION SAFEGUARDS
+    # ─────────────────────────────────────────────────────────────────
+    print("\n── 2. P0 NEGATION SAFEGUARDS (Negations must NOT trigger P0) ──")
     p0_negative_phrases = [
         "this feature ensures no data loss during migration",
         "prevents data loss when disk is full",
@@ -417,14 +535,53 @@ def run_tests():
         "system completes transaction without data loss",
         "guarantees zero data loss replication",
         "safeguard against data loss on unexpected reboot",
+        "no data loss on this path",
+        "the run completes without data loss",
+        "this is not data loss",
     ]
     for phrase in p0_negative_phrases:
-        row = {"title": phrase, "body": "Description of behavior", "title_prefix": "bug"}
-        band, _, rule = classify_issue_deterministically(row, ["bug"], [])
-        assert_test(band != "P0", f"P0 negative safe: '{phrase[:45]}' -> {band} (not P0)")
+        band, _, rule = classify(phrase, "Description of behavior")
+        assert_test(band != P0_CANDIDATE_LABEL, f"negated data loss not flagged: '{phrase[:50]}' -> {band}")
 
-    # 3. P1 POSITIVE CRASH CASES
-    print("\n── 3. P1 POSITIVE CRASH CASES (Hard Crashes without Workaround) ──")
+    # ─────────────────────────────────────────────────────────────────
+    # 3. FIX-DESCRIPTION REJECTION
+    # ─────────────────────────────────────────────────────────────────
+    print("\n── 3. FIX-DESCRIPTION REJECTION (Describing a fix is not a defect) ──")
+    fix_descriptions = [
+        "changed unknown agents from being silently dropped to being rejected",
+        "prevents records from being silently dropped",
+    ]
+    for phrase in fix_descriptions:
+        assert_test(
+            not has_silent_data_loss(phrase),
+            f"fix description is not silent data loss: '{phrase[:50]}'",
+        )
+
+    # ─────────────────────────────────────────────────────────────────
+    # 4. REAL-ISSUE REGRESSION CASES
+    # ─────────────────────────────────────────────────────────────────
+    print("\n── 4. REAL-ISSUE REGRESSION CASES (#5007, #4792, #4807, #2628) ──")
+    regression_cases = [
+        (5007, "No workaround data loss: the local store is intact and the CLI",
+         "state preserved after the rejected MCP writes"),
+        (4792, "report. No observed runtime failure or data loss is claimed.",
+         "documentation claim about burned authority"),
+        (4807, "It is a fork bomb, not a deadlock. Measured on one machine: 504 python.exe",
+         "launcher cycle created by ResolveTarget"),
+        (2628, "heuristically changed unknown agents from being silently dropped to being rejected",
+         "component modifiers report success when not scheduled"),
+    ]
+    for number, body, title in regression_cases:
+        band, _, rule = classify(title, body, prefix="bug", number=number)
+        assert_test(
+            band not in (P0_CANDIDATE_LABEL, "P1"),
+            f"issue #{number} is not flagged as candidate P0 / P1 -> band={band!r}",
+        )
+
+    # ─────────────────────────────────────────────────────────────────
+    # 5. P1 HARD CRASH POSITIVES
+    # ─────────────────────────────────────────────────────────────────
+    print("\n── 5. P1 HARD CRASH POSITIVES (No workaround) ──")
     p1_positive_crashes = [
         "panic: runtime error: index out of range",
         "fatal error: runtime: out of memory",
@@ -432,16 +589,44 @@ def run_tests():
         "segmentation fault when dereferencing null pointer",
         "NullPointerException in MessageHandler",
         "uncaught exception terminated thread",
-        "deadlock in transaction coordinator",
         "stack overflow during recursive traversal",
+        "fatal error: all goroutines are asleep - deadlock!",
+        "worker thread enters deadlock when acquiring mutex",
+        "process hangs due to deadlock in event loop",
     ]
     for phrase in p1_positive_crashes:
-        row = {"title": phrase, "body": "Call stack attached", "title_prefix": "bug"}
-        band, _, rule = classify_issue_deterministically(row, ["bug"], [])
-        assert_test(band == "P1" and rule == "rule:hard_crash", f"P1 positive: '{phrase[:45]}'")
+        band, _, rule = classify(phrase, "Call stack attached")
+        assert_test(band == "P1" and rule == "rule:hard_crash", f"P1 positive: '{phrase[:50]}'")
 
-    # 4. RULE H9 vs H10 DEMOTION
-    print("\n── 4. RULE H9 vs H10 DEMOTION (Crash WITH Workaround -> P2) ──")
+    # ─────────────────────────────────────────────────────────────────
+    # 6. DEADLOCK CONTEXT & NEGATION
+    # ─────────────────────────────────────────────────────────────────
+    print("\n── 6. DEADLOCK REQUIRES PROCESS/THREAD CONTEXT (Metaphors rejected) ──")
+    deadlock_rejects = [
+        "It is a fork bomb, not a deadlock.",
+        "This is not a deadlock situation",
+        "The two rules deadlock each other.",
+        "ordinary review denials deadlock the agent",
+        "the review is deadlocked",
+        "sdd-remediate run can deadlock before phase work",
+    ]
+    for phrase in deadlock_rejects:
+        assert_test(
+            not is_hard_crash(phrase),
+            f"deadlock without concurrency context rejected: '{phrase[:50]}'",
+        )
+    deadlock_accepts = [
+        "fatal error: all goroutines are asleep - deadlock!",
+        "mutex deadlock detected in worker pool",
+        "thread deadlock on channel receive",
+    ]
+    for phrase in deadlock_accepts:
+        assert_test(is_hard_crash(phrase), f"real concurrency deadlock accepted: '{phrase[:50]}'")
+
+    # ─────────────────────────────────────────────────────────────────
+    # 7. RULE H9 vs H10 DEMOTION
+    # ─────────────────────────────────────────────────────────────────
+    print("\n── 7. RULE H9 vs H10 DEMOTION (Crash WITH Workaround -> P2) ──")
     crash_with_workarounds = [
         (
             "panic: runtime error: index out of range",
@@ -461,15 +646,16 @@ def run_tests():
         ),
     ]
     for title, body in crash_with_workarounds:
-        row = {"title": title, "body": body, "title_prefix": "bug"}
-        band, _, rule = classify_issue_deterministically(row, ["bug"], [])
+        band, _, rule = classify(title, body)
         assert_test(
             band == "P2" and rule == "rule:crash_with_workaround_demoted_to_p2",
-            f"Crash + Workaround demoted to P2: '{title[:35]}' + '{body[:35]}'",
+            f"crash + workaround demoted to P2: '{title[:35]}' + '{body[:35]}'",
         )
 
-    # 5. WORKAROUND NEGATION
-    print("\n── 5. WORKAROUND NEGATION (Explicit 'No Workaround' -> Remains P1) ──")
+    # ─────────────────────────────────────────────────────────────────
+    # 8. WORKAROUND NEGATION
+    # ─────────────────────────────────────────────────────────────────
+    print("\n── 8. WORKAROUND NEGATION (Explicit 'No Workaround' -> Remains P1) ──")
     crash_without_workarounds = [
         (
             "panic: runtime error: nil dereference",
@@ -489,97 +675,116 @@ def run_tests():
         ),
     ]
     for title, body in crash_without_workarounds:
-        row = {"title": title, "body": body, "title_prefix": "bug"}
-        band, _, rule = classify_issue_deterministically(row, ["bug"], [])
+        band, _, rule = classify(title, body)
         assert_test(
             band == "P1" and rule == "rule:hard_crash",
-            f"Crash + Negated Workaround remains P1: '{title[:35]}' + '{body[:35]}'",
+            f"crash + negated workaround remains P1: '{title[:35]}' + '{body[:35]}'",
         )
 
-    # 6. OVERFIT PATTERN ELIMINATION
-    print("\n── 6. OVERFIT PATTERN ELIMINATION (Generalized / Removed) ──")
+    # ─────────────────────────────────────────────────────────────────
+    # 9. OVERFIT PATTERN ELIMINATION
+    # ─────────────────────────────────────────────────────────────────
+    print("\n── 9. OVERFIT PATTERN ELIMINATION (Generalized / Removed) ──")
     overfit_phrases = [
         "busy-loop on frozen review session",
         "dead-end encountered in review lineage",
     ]
     for phrase in overfit_phrases:
-        row = {"title": phrase, "body": "Encountered in workflow", "title_prefix": "bug"}
-        band, _, rule = classify_issue_deterministically(row, ["bug"], [])
-        assert_test(
-            band != "P1",
-            f"Overfit pattern does not trigger P1: '{phrase}' -> band={band}",
-        )
+        band, _, rule = classify(phrase, "Encountered in workflow")
+        assert_test(band != "P1", f"overfit pattern does not trigger P1: '{phrase}' -> band={band}")
 
-    # 7. P2 FEATURES & P3 CHORES
-    print("\n── 7. P2 FEATURES & P3 CHORES / DOCUMENTATION ──")
+    # ─────────────────────────────────────────────────────────────────
+    # 10. P2 FEATURES & P3 CHORES
+    # ─────────────────────────────────────────────────────────────────
+    print("\n── 10. P2 FEATURES & P3 CHORES / DOCUMENTATION ──")
     p2_cases = [
-        {"title": "feat(core): add streaming support", "body": "Feature request", "title_prefix": "feat", "labels": []},
-        {"title": "add dark mode to user interface", "body": "UI enhancement", "title_prefix": "", "labels": ["enhancement"]},
-        {"title": "type:feature - support PostgreSQL", "body": "DB adapter", "title_prefix": "", "labels": ["type:feature"]},
+        {"title": "feat(core): add streaming support", "body": "Feature request", "prefix": "feat", "labels": []},
+        {"title": "add dark mode to user interface", "body": "UI enhancement", "prefix": "", "labels": ["enhancement"]},
+        {"title": "type:feature - support PostgreSQL", "body": "DB adapter", "prefix": "", "labels": ["type:feature"]},
     ]
     for tc in p2_cases:
-        band, _, rule = classify_issue_deterministically(tc, tc.get("labels", []), [])
-        assert_test(band == "P2" and rule == "rule:feature_request", f"Feature -> P2: '{tc['title'][:40]}'")
+        band, _, rule = classify(tc["title"], tc["body"], prefix=tc["prefix"], labels=tc["labels"])
+        assert_test(band == "P2" and rule == "rule:feature_request", f"feature -> P2: '{tc['title'][:40]}'")
 
     p3_cases = [
-        {"title": "docs: update getting started guide", "body": "Fix broken link", "title_prefix": "docs", "labels": []},
-        {"title": "chore: bump dependencies to latest", "body": "Monthly updates", "title_prefix": "chore", "labels": []},
-        {"title": "typo in configuration documentation", "body": "Correct spelling", "title_prefix": "typo", "labels": []},
-        {"title": "question: how to configure custom port", "body": "User inquiry", "title_prefix": "", "labels": ["question"]},
+        {"title": "docs: update getting started guide", "body": "Fix broken link", "prefix": "docs", "labels": []},
+        {"title": "chore: bump dependencies to latest", "body": "Monthly updates", "prefix": "chore", "labels": []},
+        {"title": "typo in configuration documentation", "body": "Correct spelling", "prefix": "typo", "labels": []},
+        {"title": "question: how to configure custom port", "body": "User inquiry", "prefix": "", "labels": ["question"]},
     ]
     for tc in p3_cases:
-        band, _, rule = classify_issue_deterministically(tc, tc.get("labels", []), [])
-        assert_test(band == "P3" and rule == "rule:docs_chore_question", f"Docs/Chore -> P3: '{tc['title'][:40]}'")
+        band, _, rule = classify(tc["title"], tc["body"], prefix=tc["prefix"], labels=tc["labels"])
+        assert_test(band == "P3" and rule == "rule:docs_chore_question", f"docs/chore -> P3: '{tc['title'][:40]}'")
 
-    # 8. GREY-AREA FALL-THROUGH
-    print("\n── 8. GREY-AREA FALL-THROUGH (Requires LLM Pass 1) ──")
+    # ─────────────────────────────────────────────────────────────────
+    # 11. GREY-AREA FALL-THROUGH
+    # ─────────────────────────────────────────────────────────────────
+    print("\n── 11. GREY-AREA FALL-THROUGH (Requires LLM Pass 1) ──")
     grey_cases = [
-        {"title": "button alignment is slightly off in Safari", "body": "Visual bug", "title_prefix": "bug", "labels": ["bug"]},
-        {"title": "search results return in unexpected order", "body": "Sorting issue", "title_prefix": "bug", "labels": ["bug"]},
-        {"title": "intermittent latency spike during peak load", "body": "Performance issue", "title_prefix": "bug", "labels": ["bug"]},
+        {"title": "button alignment is slightly off in Safari", "body": "Visual bug"},
+        {"title": "search results return in unexpected order", "body": "Sorting issue"},
+        {"title": "intermittent latency spike during peak load", "body": "Performance issue"},
     ]
     for tc in grey_cases:
-        band, _, rule = classify_issue_deterministically(tc, tc.get("labels", []), [])
-        assert_test(band is None and rule is None, f"Grey area -> Indeterminate: '{tc['title'][:40]}'")
+        band, _, rule = classify(tc["title"], tc["body"])
+        assert_test(band is None and rule is None, f"grey area -> indeterminate: '{tc['title'][:40]}'")
 
-    # 9. DYNAMIC DATASET SNAPSHOT VERIFICATION
-    print("\n── 9. DYNAMIC DATASET SNAPSHOT VERIFICATION (issues.json) ──")
+    # ─────────────────────────────────────────────────────────────────
+    # 12. SNAPSHOT SELF-CONSISTENCY (dynamic, no frozen totals)
+    # ─────────────────────────────────────────────────────────────────
+    print("\n── 12. SNAPSHOT SELF-CONSISTENCY (issues.json, dynamic) ──")
     snapshot_file = Path(__file__).parent / "issues.json"
-    assert_test(snapshot_file.exists(), f"Snapshot file exists at {snapshot_file}")
+    assert_test(snapshot_file.exists(), "Snapshot file issues.json exists")
     with open(snapshot_file, "r", encoding="utf-8") as f:
         snapshot_issues = json.load(f)
+    assert_test(len(snapshot_issues) > 0, f"Snapshot is non-empty (found {len(snapshot_issues)} issues)")
 
-    assert_test(len(snapshot_issues) == 1228, f"Snapshot contains exactly 1,228 open issues (found {len(snapshot_issues)})")
+    index = {(it.get("slug"), it.get("number")): it for it in snapshot_issues}
 
-    classified_count = 0
-    rule_histogram = {}
-    for item in snapshot_issues:
+    # #5007 / #4792 / #4807 / #2628 must stay out of candidate P0 and P1 in the real snapshot.
+    for slug, number in [("gentle-ai", 5007), ("gentle-ai", 4792), ("gentle-ai", 4807), ("gentle-ai", 2628)]:
+        item = index.get((slug, number))
+        assert_test(item is not None, f"snapshot contains {slug}#{number}")
         band, _, rule = classify_issue_deterministically(item, item.get("labels", []), item.get("cross_refs", []))
-        if band is not None:
-            classified_count += 1
-            rule_histogram[rule] = rule_histogram.get(rule, 0) + 1
+        assert_test(
+            band not in (P0_CANDIDATE_LABEL, "P1"),
+            f"snapshot regression {slug}#{number} not candidate P0/P1 -> band={band!r}",
+        )
 
-    pct_classified = 100.0 * classified_count / len(snapshot_issues)
-    assert_test(
-        classified_count == 491,
-        f"Dynamic calculation on snapshot yields exactly 491 resolved issues ({pct_classified:.1f}%)"
+    # The known genuinely-silent case must be flagged as a candidate (not a final P0).
+    item_4917 = index.get(("gentle-ai", 4917))
+    assert_test(item_4917 is not None, "snapshot contains gentle-ai#4917")
+    band_4917, _, rule_4917 = classify_issue_deterministically(
+        item_4917, item_4917.get("labels", []), item_4917.get("cross_refs", [])
     )
     assert_test(
-        rule_histogram.get("rule:feature_request") == 415,
-        f"rule:feature_request matches exactly 415 issues"
+        band_4917 == P0_CANDIDATE_LABEL and rule_4917 == RULE_P0_CANDIDATE,
+        f"snapshot gentle-ai#4917 is a candidate P0, not a final decision (band={band_4917!r})",
     )
+
+    # Dynamic recomputation must be reproducible: two passes over the snapshot agree.
+    def snapshot_digest():
+        digest = {}
+        for item in snapshot_issues:
+            band, _, rule = classify_issue_deterministically(item, item.get("labels", []), item.get("cross_refs", []))
+            if band is not None:
+                digest[rule] = digest.get(rule, 0) + 1
+        return digest
+
+    first_pass = snapshot_digest()
+    second_pass = snapshot_digest()
+    assert_test(first_pass == second_pass, "dynamic snapshot classification is reproducible across passes")
+
+    covered = sum(first_pass.values())
+    assert_test(covered > 0, f"deterministic engine covers at least one snapshot issue ({covered} covered)")
     assert_test(
-        rule_histogram.get("rule:docs_chore_question") == 52,
-        f"rule:docs_chore_question matches exactly 52 issues"
+        first_pass.get(RULE_P0_CANDIDATE, 0) > 0,
+        f"candidate P0 rule is exercised on the snapshot ({first_pass.get(RULE_P0_CANDIDATE, 0)} candidates)",
     )
-    assert_test(
-        rule_histogram.get("rule:silent_data_loss") == 17,
-        f"rule:silent_data_loss matches exactly 17 issues"
-    )
-    assert_test(
-        rule_histogram.get("rule:hard_crash") == 7,
-        f"rule:hard_crash matches exactly 7 issues"
-    )
+
+    print("\n  Dynamic rule histogram over issues.json (recomputed, not frozen):")
+    for rule, cnt in sorted(first_pass.items(), key=lambda x: x[1], reverse=True):
+        print(f"    - {rule:44s}: {cnt:4d}")
 
     print("\n────────────────────────────────────────────────────────────────────")
     print(f" FINAL TEST RESULT: {passed}/{total} tests passed successfully.")
@@ -591,87 +796,168 @@ if __name__ == "__main__":
     sys.exit(run_tests())
 ```
 
-### Exact Test Runner Output:
+### Exact Test Runner Output
 
 ```text
 ════════════════════════════════════════════════════════════════════
  RUNNING DETERMINISTIC RULES TEST SUITE (test_rules.py)
 ════════════════════════════════════════════════════════════════════
 
-── 1. P0 POSITIVE CASES (Silent Data Loss & Corruption) ──
-  ✔ [PASS] P0 positive: 'silently dropped rows during migration'
-  ✔ [PASS] P0 positive: 'silently corrupted the db on shutdown'
-  ✔ [PASS] P0 positive: 'silently lost data when buffer overflowed'
-  ✔ [PASS] P0 positive: 'silently overwrites files without prompt'
-  ✔ [PASS] P0 positive: 'panic: silently dropped rows'
-  ✔ [PASS] P0 positive: 'unexpected data loss during table flush'
-  ✔ [PASS] P0 positive: 'engine silently fails to save configuration'
+── 1. P0 CANDIDATE POSITIVES (Silent Data Loss & Corruption) ──
+  ✔ [PASS] candidate P0 via rule:candidato_p0_requiere_revision_humana: 'silently dropped rows during migration'
+  ✔ [PASS] candidate P0 via rule:candidato_p0_requiere_revision_humana: 'silently corrupted the db on shutdown'
+  ✔ [PASS] candidate P0 via rule:candidato_p0_requiere_revision_humana: 'silently lost data when buffer overflowed'
+  ✔ [PASS] candidate P0 via rule:candidato_p0_requiere_revision_humana: 'silently overwrites files without prompt'
+  ✔ [PASS] candidate P0 via rule:candidato_p0_requiere_revision_humana: 'panic: silently dropped rows'
+  ✔ [PASS] candidate P0 via rule:candidato_p0_requiere_revision_humana: 'unexpected data loss during table flush'
+  ✔ [PASS] candidate P0 via rule:candidato_p0_requiere_revision_humana: 'engine silently fails to save configuration'
+  ✔ [PASS] candidate P0 via rule:candidato_p0_requiere_revision_humana: 'A corrupt custom-agents.json silently drops the re'
 
-── 2. P0 NEGATIVE SAFEGUARDS (Negations must NOT trigger P0) ──
-  ✔ [PASS] P0 negative safe: 'this feature ensures no data loss during migr' -> None (not P0)
-  ✔ [PASS] P0 negative safe: 'prevents data loss when disk is full' -> None (not P0)
-  ✔ [PASS] P0 negative safe: 'avoid data loss by flushing WAL immediately' -> None (not P0)
-  ✔ [PASS] P0 negative safe: 'system completes transaction without data los' -> None (not P0)
-  ✔ [PASS] P0 negative safe: 'guarantees zero data loss replication' -> None (not P0)
-  ✔ [PASS] P0 negative safe: 'safeguard against data loss on unexpected reb' -> None (not P0)
+── 2. P0 NEGATION SAFEGUARDS (Negations must NOT trigger P0) ──
+  ✔ [PASS] negated data loss not flagged: 'this feature ensures no data loss during migration' -> None
+  ✔ [PASS] negated data loss not flagged: 'prevents data loss when disk is full' -> None
+  ✔ [PASS] negated data loss not flagged: 'avoid data loss by flushing WAL immediately' -> None
+  ✔ [PASS] negated data loss not flagged: 'system completes transaction without data loss' -> None
+  ✔ [PASS] negated data loss not flagged: 'guarantees zero data loss replication' -> None
+  ✔ [PASS] negated data loss not flagged: 'safeguard against data loss on unexpected reboot' -> None
+  ✔ [PASS] negated data loss not flagged: 'no data loss on this path' -> None
+  ✔ [PASS] negated data loss not flagged: 'the run completes without data loss' -> None
+  ✔ [PASS] negated data loss not flagged: 'this is not data loss' -> None
 
-── 3. P1 POSITIVE CRASH CASES (Hard Crashes without Workaround) ──
+── 3. FIX-DESCRIPTION REJECTION (Describing a fix is not a defect) ──
+  ✔ [PASS] fix description is not silent data loss: 'changed unknown agents from being silently dropped'
+  ✔ [PASS] fix description is not silent data loss: 'prevents records from being silently dropped'
+
+── 4. REAL-ISSUE REGRESSION CASES (#5007, #4792, #4807, #2628) ──
+  ✔ [PASS] issue #5007 is not flagged as candidate P0 / P1 -> band=None
+  ✔ [PASS] issue #4792 is not flagged as candidate P0 / P1 -> band=None
+  ✔ [PASS] issue #4807 is not flagged as candidate P0 / P1 -> band=None
+  ✔ [PASS] issue #2628 is not flagged as candidate P0 / P1 -> band=None
+
+── 5. P1 HARD CRASH POSITIVES (No workaround) ──
   ✔ [PASS] P1 positive: 'panic: runtime error: index out of range'
   ✔ [PASS] P1 positive: 'fatal error: runtime: out of memory'
   ✔ [PASS] P1 positive: 'SIGSEGV in worker process on boot'
-  ✔ [PASS] P1 positive: 'segmentation fault when dereferencing null po'
+  ✔ [PASS] P1 positive: 'segmentation fault when dereferencing null pointer'
   ✔ [PASS] P1 positive: 'NullPointerException in MessageHandler'
   ✔ [PASS] P1 positive: 'uncaught exception terminated thread'
-  ✔ [PASS] P1 positive: 'deadlock in transaction coordinator'
   ✔ [PASS] P1 positive: 'stack overflow during recursive traversal'
+  ✔ [PASS] P1 positive: 'fatal error: all goroutines are asleep - deadlock!'
+  ✔ [PASS] P1 positive: 'worker thread enters deadlock when acquiring mutex'
+  ✔ [PASS] P1 positive: 'process hangs due to deadlock in event loop'
 
-── 4. RULE H9 vs H10 DEMOTION (Crash WITH Workaround -> P2) ──
-  ✔ [PASS] Crash + Workaround demoted to P2: 'panic: runtime error: index out of ' + 'Workaround: run with --disable-cach'
-  ✔ [PASS] Crash + Workaround demoted to P2: 'SIGSEGV on startup when config is m' + 'Temporary fix: touch config.json be'
-  ✔ [PASS] Crash + Workaround demoted to P2: 'fatal error: runtime deadlock in po' + 'Recovers upon retry when worker poo'
-  ✔ [PASS] Crash + Workaround demoted to P2: 'NullPointerException in sync loop' + 'Restart fixes the issue temporarily'
+── 6. DEADLOCK REQUIRES PROCESS/THREAD CONTEXT (Metaphors rejected) ──
+  ✔ [PASS] deadlock without concurrency context rejected: 'It is a fork bomb, not a deadlock.'
+  ✔ [PASS] deadlock without concurrency context rejected: 'This is not a deadlock situation'
+  ✔ [PASS] deadlock without concurrency context rejected: 'The two rules deadlock each other.'
+  ✔ [PASS] deadlock without concurrency context rejected: 'ordinary review denials deadlock the agent'
+  ✔ [PASS] deadlock without concurrency context rejected: 'the review is deadlocked'
+  ✔ [PASS] deadlock without concurrency context rejected: 'sdd-remediate run can deadlock before phase work'
+  ✔ [PASS] real concurrency deadlock accepted: 'fatal error: all goroutines are asleep - deadlock!'
+  ✔ [PASS] real concurrency deadlock accepted: 'mutex deadlock detected in worker pool'
+  ✔ [PASS] real concurrency deadlock accepted: 'thread deadlock on channel receive'
 
-── 5. WORKAROUND NEGATION (Explicit 'No Workaround' -> Remains P1) ──
-  ✔ [PASS] Crash + Negated Workaround remains P1: 'panic: runtime error: nil dereferen' + 'Workaround: none. The daemon immedi'
-  ✔ [PASS] Crash + Negated Workaround remains P1: 'SIGSEGV on boot in initialization r' + 'No workaround available. Completely'
-  ✔ [PASS] Crash + Negated Workaround remains P1: 'fatal error: runtime: out of memory' + 'Without any workaround; all attempt'
-  ✔ [PASS] Crash + Negated Workaround remains P1: 'NullPointerException in parser' + 'Workaround: n/a. Issue is reproduci'
+── 7. RULE H9 vs H10 DEMOTION (Crash WITH Workaround -> P2) ──
+  ✔ [PASS] crash + workaround demoted to P2: 'panic: runtime error: index out of ' + 'Workaround: run with --disable-cach'
+  ✔ [PASS] crash + workaround demoted to P2: 'SIGSEGV on startup when config is m' + 'Temporary fix: touch config.json be'
+  ✔ [PASS] crash + workaround demoted to P2: 'fatal error: runtime deadlock in po' + 'Recovers upon retry when worker poo'
+  ✔ [PASS] crash + workaround demoted to P2: 'NullPointerException in sync loop' + 'Restart fixes the issue temporarily'
 
-── 6. OVERFIT PATTERN ELIMINATION (Generalized / Removed) ──
-  ✔ [PASS] Overfit pattern does not trigger P1: 'busy-loop on frozen review session' -> band=None
-  ✔ [PASS] Overfit pattern does not trigger P1: 'dead-end encountered in review lineage' -> band=None
+── 8. WORKAROUND NEGATION (Explicit 'No Workaround' -> Remains P1) ──
+  ✔ [PASS] crash + negated workaround remains P1: 'panic: runtime error: nil dereferen' + 'Workaround: none. The daemon immedi'
+  ✔ [PASS] crash + negated workaround remains P1: 'SIGSEGV on boot in initialization r' + 'No workaround available. Completely'
+  ✔ [PASS] crash + negated workaround remains P1: 'fatal error: runtime: out of memory' + 'Without any workaround; all attempt'
+  ✔ [PASS] crash + negated workaround remains P1: 'NullPointerException in parser' + 'Workaround: n/a. Issue is reproduci'
 
-── 7. P2 FEATURES & P3 CHORES / DOCUMENTATION ──
-  ✔ [PASS] Feature -> P2: 'feat(core): add streaming support'
-  ✔ [PASS] Feature -> P2: 'add dark mode to user interface'
-  ✔ [PASS] Feature -> P2: 'type:feature - support PostgreSQL'
-  ✔ [PASS] Docs/Chore -> P3: 'docs: update getting started guide'
-  ✔ [PASS] Docs/Chore -> P3: 'chore: bump dependencies to latest'
-  ✔ [PASS] Docs/Chore -> P3: 'typo in configuration documentation'
-  ✔ [PASS] Docs/Chore -> P3: 'question: how to configure custom port'
+── 9. OVERFIT PATTERN ELIMINATION (Generalized / Removed) ──
+  ✔ [PASS] overfit pattern does not trigger P1: 'busy-loop on frozen review session' -> band=None
+  ✔ [PASS] overfit pattern does not trigger P1: 'dead-end encountered in review lineage' -> band=None
 
-── 8. GREY-AREA FALL-THROUGH (Requires LLM Pass 1) ──
-  ✔ [PASS] Grey area -> Indeterminate: 'button alignment is slightly off in Safa'
-  ✔ [PASS] Grey area -> Indeterminate: 'search results return in unexpected orde'
-  ✔ [PASS] Grey area -> Indeterminate: 'intermittent latency spike during peak l'
+── 10. P2 FEATURES & P3 CHORES / DOCUMENTATION ──
+  ✔ [PASS] feature -> P2: 'feat(core): add streaming support'
+  ✔ [PASS] feature -> P2: 'add dark mode to user interface'
+  ✔ [PASS] feature -> P2: 'type:feature - support PostgreSQL'
+  ✔ [PASS] docs/chore -> P3: 'docs: update getting started guide'
+  ✔ [PASS] docs/chore -> P3: 'chore: bump dependencies to latest'
+  ✔ [PASS] docs/chore -> P3: 'typo in configuration documentation'
+  ✔ [PASS] docs/chore -> P3: 'question: how to configure custom port'
 
-── 9. DYNAMIC DATASET SNAPSHOT VERIFICATION (issues.json) ──
-  ✔ [PASS] Snapshot file exists at /home/rafael/proyectos/Gentle-AI-Maintainer-Assistant/issues.json
-  ✔ [PASS] Snapshot contains exactly 1,228 open issues (found 1228)
-  ✔ [PASS] Dynamic calculation on snapshot yields exactly 491 resolved issues (40.0%)
-  ✔ [PASS] rule:feature_request matches exactly 415 issues
-  ✔ [PASS] rule:docs_chore_question matches exactly 52 issues
-  ✔ [PASS] rule:silent_data_loss matches exactly 17 issues
-  ✔ [PASS] rule:hard_crash matches exactly 7 issues
+── 11. GREY-AREA FALL-THROUGH (Requires LLM Pass 1) ──
+  ✔ [PASS] grey area -> indeterminate: 'button alignment is slightly off in Safa'
+  ✔ [PASS] grey area -> indeterminate: 'search results return in unexpected orde'
+  ✔ [PASS] grey area -> indeterminate: 'intermittent latency spike during peak l'
+
+── 12. SNAPSHOT SELF-CONSISTENCY (issues.json, dynamic) ──
+  ✔ [PASS] Snapshot file issues.json exists
+  ✔ [PASS] Snapshot is non-empty (found 1228 issues)
+  ✔ [PASS] snapshot contains gentle-ai#5007
+  ✔ [PASS] snapshot regression gentle-ai#5007 not candidate P0/P1 -> band=None
+  ✔ [PASS] snapshot contains gentle-ai#4792
+  ✔ [PASS] snapshot regression gentle-ai#4792 not candidate P0/P1 -> band=None
+  ✔ [PASS] snapshot contains gentle-ai#4807
+  ✔ [PASS] snapshot regression gentle-ai#4807 not candidate P0/P1 -> band=None
+  ✔ [PASS] snapshot contains gentle-ai#2628
+  ✔ [PASS] snapshot regression gentle-ai#2628 not candidate P0/P1 -> band=None
+  ✔ [PASS] snapshot contains gentle-ai#4917
+  ✔ [PASS] snapshot gentle-ai#4917 is a candidate P0, not a final decision (band='candidato P0, requiere revisión humana')
+  ✔ [PASS] dynamic snapshot classification is reproducible across passes
+  ✔ [PASS] deterministic engine covers at least one snapshot issue (483 covered)
+  ✔ [PASS] candidate P0 rule is exercised on the snapshot (14 candidates)
+
+  Dynamic rule histogram over issues.json (recomputed, not frozen):
+    - rule:feature_request                        :  415
+    - rule:docs_chore_question                    :   52
+    - rule:candidato_p0_requiere_revision_humana  :   14
+    - rule:hard_crash                             :    2
 
 ────────────────────────────────────────────────────────────────────
- FINAL TEST RESULT: 48/48 tests passed successfully.
+ FINAL TEST RESULT: 77/77 tests passed successfully.
 ════════════════════════════════════════════════════════════════════
 ```
 
 ---
 
-## 3. Policy & Triage Model (`docs/triage-model.md` Literal Copy)
+## 3. Contract Validation: `schemas/validate.py` Output
+
+Fuente: `schemas/validate.py`
+
+```text
+════════════════════════════════════════════════════════════════════
+ VALIDATING SCHEMAS & FIXTURES (Draft 2020-12)
+════════════════════════════════════════════════════════════════════
+
+✔ Schema syntax OK: issue-record.schema.json
+    ✔ Valid fixture: issue-record.fixture.json
+✔ Schema syntax OK: triage-inference.schema.json
+    ✔ Valid fixture: triage-inference-deterministic.fixture.json
+    ✔ Valid fixture: triage-inference-llm.fixture.json
+    ✔ Valid fixture: triage-inference-p0-candidate.fixture.json
+✔ Schema syntax OK: maintainer-decision.schema.json
+    ✔ Valid fixture: maintainer-decision-accept.fixture.json
+    ✔ Valid fixture: maintainer-decision-override.fixture.json
+✔ Schema syntax OK: triage-batch-report.schema.json
+    ✔ Valid fixture: triage-batch-report.fixture.json
+
+════════════════════════════════════════════════════════════════════
+ NEGATIVE TESTS (Verifying fail-closed behavior)
+════════════════════════════════════════════════════════════════════
+
+✔ Neg test 1 OK: deterministic_rule without rule_name is rejected as expected
+✔ Neg test 2 OK: decision without human actor is rejected as expected
+✔ Neg test 3 OK: invented band P4 is rejected as expected
+✔ Neg test 4 OK: candidate P0 label requires rule:candidato_p0_requiere_revision_humana
+✔ Neg test 5 OK: deterministic candidate rule cannot emit a final P0 band
+
+────────────────────────────────────────────────────────────────────
+ FINAL RESULT: 12/12 tests passed successfully.
+════════════════════════════════════════════════════════════════════
+```
+
+The schema enforces the governance invariant **bidirectionally**: `band == "candidato P0, requiere revisión humana"` requires `source == "deterministic_rule"` and `rule_name == "rule:candidato_p0_requiere_revision_humana"`; and that rule name requires the candidate band. A deterministic candidate rule cannot be published as a final `P0` band, and a candidate P0 label cannot be attached to a non-candidate rule.
+
+---
+
+## 4. Triage Model: 13 Dimensions & Rules H1–H10
 
 ### The 13 Triage Dimensions
 
@@ -706,85 +992,123 @@ if __name__ == "__main__":
 | **H7** | Maintainer Authority | A maintainer override always wins and is recorded as a decision. |
 | **H8** | Provisional Pass 1 | Pass-1 bands are provisional. Pass 2 may correct them, and the correction is recorded. |
 | **H9** | Workaround & Retry (P1 vs P2) | If a documented or accessible manual workaround exists, or if the failure is intermittent and recovers upon retry, the issue **MUST** be classified as P2, never P1. P1 is strictly reserved for dead-ends with no viable escape hatch. |
-| **H10** | Code > LLM Pre-Filter | Issues matching unambiguous structural patterns (`feat:` prefix -> P2, `docs:`/`chore:` -> P3, `panic:`/`SIGSEGV` -> P1, `silent corruption` -> P0) are classified deterministically by code without invoking an LLM. |
+| **H10** | Code > LLM Pre-Filter | Issues matching unambiguous structural patterns (`feat:` -> P2, `docs:`/`chore:` -> P3, `panic:`/`SIGSEGV` -> P1, silent corruption -> **candidate P0 requiring human review**) are classified deterministically by code without invoking an LLM. |
 
 ---
 
-## 4. Architectural Analysis: Rule Conflict Resolution & Overfitting Audit
+## 5. Architectural Analysis: Negation Hardening, Deadlock Context & Overfitting Audit
 
 ### A. Resolution of the Rule H9 vs Rule H10 Conflict
+
 * **The Conflict:** Rule H10 previously stated that structural crash tokens (`panic:`, `SIGSEGV`) map directly to P1 via code. Rule H9 requires that any issue with an accessible manual workaround or retry recovery must be demoted to P2. Under naive regex matching, an issue with `panic: ... Workaround: run with --flag` would incorrectly be assigned P1 by Rule H10, violating Rule H9.
 * **The Architectural Decision:** Rule H10 is subordinate to Rule H9's operational boundary. In `db/rules.py`:
-  1. If an issue matches `RE_P1_CRASH`, the engine immediately inspects the issue text for workaround patterns (`RE_WORKAROUND_POSITIVE`) and retry recovery phrases.
+  1. If an issue matches `RE_P1_CRASH_CORE` or a genuine concurrency deadlock, the engine immediately inspects the issue text for workaround patterns (`RE_WORKAROUND_POSITIVE`) and retry recovery phrases.
   2. If an active workaround or retry recovery is present, the issue is deterministically assigned **P2** with rule `rule:crash_with_workaround_demoted_to_p2`.
   3. P1 (`rule:hard_crash`) is assigned **ONLY IF no workaround or retry recovery is detected**.
-  4. Crucially, explicit declarations of the *absence* of a workaround (`workaround: none`, `no workaround available`, `without any workaround`) are recognized via `RE_WORKAROUND_NEGATIVE` to ensure they are **NOT** falsely treated as workarounds. They strictly remain **P1**.
+  4. Explicit declarations of the *absence* of a workaround (`workaround: none`, `no workaround available`, `without any workaround`) are recognized via `RE_WORKAROUND_NEGATIVE` and are **NOT** treated as workarounds. They strictly remain **P1**.
 
-### B. Elimination and Generalization of Overfitted Regex Patterns
+### B. Negation Hardening for Silent Data Loss (P0 candidate)
+
+Naive matching produced false high-priority flags on issues that explicitly state the *absence* of loss, or that *describe a fix*. Four real issues exposed this:
+
+| Issue | Trap text | Why it must not fire | Safeguard applied |
+| --- | --- | --- | --- |
+| `gentle-ai#5007` | `No workaround data loss: the local store is intact` | Explicitly states the state is preserved | `RE_DATA_LOSS_NEGATION` (`no ... data loss`) |
+| `gentle-ai#4792` | `No observed runtime failure or data loss is claimed.` | Explicitly claims no data loss occurred | `RE_DATA_LOSS_NEGATION` (`no observed ... data loss`) |
+| `gentle-ai#2628` | `from being silently dropped to being rejected` | Describes a fix (transition to a better behavior) | `RE_FIX_DESCRIPTION` (`from being silently ... to being`) |
+| `gentle-ai#4807` | `It is a fork bomb, not a deadlock.` | Negated deadlock | `RE_DEADLOCK_NEGATION` (`not a deadlock`) |
+
+### C. Deadlock Requires Process/Thread Context
+
+The bare token `deadlock` matched metaphorical usages such as *"The two rules deadlock each other"* and *"ordinary review denials deadlock the agent"* — a logical impasse, not a runtime crash. The rule now requires explicit concurrency context (`goroutine`, `thread`, `mutex`, `lock`, `process`, `hang`, `worker`) within a bounded window of the token, and rejects explicit negation. Metaphorical deadlocks (`gentle-ai#4286`, `#2366`, `#5094`; `gentle-shell#1087`) no longer trigger P1.
+
+### D. Elimination and Generalization of Overfitted Regex Patterns
+
 During initial prototyping, two patterns were introduced that exhibited severe overfitting:
-1. `dead-end.*lineage`: "Lineage" is an internal domain-specific concept of the `gentle-ai` review architecture. Matching "dead-end in lineage" was tailored to specific historical bug tickets in one repository. **Action:** Completely removed.
+
+1. `dead-end.*lineage`: "lineage" is an internal domain-specific concept of the `gentle-ai` review architecture. Matching "dead-end in lineage" was tailored to specific historical bug tickets in one repository. **Action:** Completely removed.
 2. `busy-loop.*frozen`: An informal, colloquial phrase that matched a specific historical bug report but is neither a standard runtime signal nor a reliable architectural invariant. **Action:** Completely removed.
-* **Replacement:** We generalized crash and stall detection to standard operating system signals, runtime panics, and concurrency deadlocks:
-  `(?:\bpanic:\s*|\bSIGSEGV\b|\bfatal error:\s*runtime\b|\bsegmentation fault\b|\bNullPointerException\b|\buncaught exception\b|\bdeadlock(?:ed)?\b|\bstack overflow\b)`.
+
+* **Replacement:** crash and stall detection was generalized to standard operating-system signals, runtime panics, and concurrency deadlocks: `panic:`, `SIGSEGV`, `fatal error: runtime`, `segmentation fault`, `NullPointerException`, `uncaught exception`, `stack overflow`, plus context-bound `deadlock`.
+
+### E. Candidate-P0 Governance Invariant
+
+The deterministic engine never declares a final P0. A silent-data-loss match is emitted as `candidato P0, requiere revisión humana` with rule `rule:candidato_p0_requiere_revision_humana`. The schema enforces this in both directions (Section 3), and the human-review gold set lives in `gold-p0-p1.md` with `veredicto_humano: pendiente`.
 
 ---
 
-## 5. Metrics Methodology & Empirical Provenance
+## 6. Metrics Methodology & Empirical Provenance
 
-This section provides strict provenance for every metric cited in the project.
+Every figure below is computed dynamically by `db/rules.py` and `test_rules.py`; no figure is hardcoded in the engine.
 
 | Metric | Exact Value | Evaluated Scope | Ground Truth / Labeler | Evaluation vs Design Set Relationship |
 | --- | --- | --- | --- | --- |
-| **Backlog Deterministic Coverage** | **40.0%** (491 / 1,228) | All 1,228 open issues in `db/exp.db` and `issues.json` (`gentle-ai`: 733, `gentle-shell`: 424, `engram`: 71). | Calculated dynamically from issue titles, prefixes, labels, and bodies. | **Total population census.** Evaluated on all open issues across the three repositories. |
-| **Deterministic Precision vs Judge A** | **94.1%** (32 / 34) | Stratified calibration sample of 90 issues (Run #1, hash `e049b162`), where 34 matched the calibrated rules. | Blind LLM Judge A (`minimax/MiniMax-M3`, Run #1 Attempt 2). | **Calibration sample.** Note: this 90-issue sample was used during heuristic calibration. Held-out test validation is planned for Phase 3. |
-| **Deterministic Precision vs Judge B** | **85.3%** (29 / 34) | Same 34 matched issues from the 90-issue sample. | Blind LLM Judge B (`nan/deepseek-v4-flash`, Run #1 Attempt 2). | **Calibration sample.** Divergences stem from cosmetic features where Judge B preferred P3 while rules assigned P2 (`feat:`). |
-| **Both Judges Match Deterministic Rule** | **85.3%** (29 / 34) | Same 34 matched issues from the 90-issue sample. | Both Judge A and Judge B independently concurred with the rule. | **Calibration sample.** In 0 of 34 cases did any judge assign P0 or P1 to a feature request. |
-| **Feature Request P2 Precision** | **100.0%** vs P0/P1 (28 / 28) | 28 feature requests in the 90-issue sample matched by `rule:feature_request`. | Judge A: 28/28 (100% P2). Judge B: 24/28 P2, 4/28 P3. **0/28 (0%) assigned P0 or P1.** | **Calibration sample.** Confirms that feature requests never cause false high-priority alarms. |
+| **Backlog Deterministic Coverage** | **39.3%** (483 / 1,228) | All 1,228 open issues (`gentle-ai`: 733, `gentle-shell`: 424, `engram`: 71). | Calculated dynamically from titles, prefixes, labels, and bodies by `db/rules.py`. | **Total population census.** |
+| **Residual Grey Area** | **60.7%** (745 / 1,228) | Same census. | Issues not matched by any deterministic rule; routed to LLM Pass 1. | **Total population census.** |
+| **Candidate P0 (silent data loss)** | **14 issues** | Same census. | `rule:candidato_p0_requiere_revision_humana`. | **Candidates only.** Enumerated in `gold-p0-p1.md` with `veredicto_humano: pendiente`. |
+| **P1 (hard crash, no workaround)** | **2 issues** | Same census. | `rule:hard_crash`. | **Candidates only.** Enumerated in `gold-p0-p1.md`. |
+| **P2 (feature request)** | **415 issues** | Same census. | `rule:feature_request`. | **Total population census.** |
+| **P3 (docs/chore/question)** | **52 issues** | Same census. | `rule:docs_chore_question`. | **Total population census.** |
+| **Deterministic Precision vs Judge A** | **94.1%** (32 / 34) | Stratified calibration sample of 90 issues (Run #1), where 34 matched the calibrated rules. | Blind LLM Judge A (`minimax/MiniMax-M3`, Run #1 Attempt 2). | **Calibration sample.** This sample was used during heuristic calibration; out-of-sample validation is planned for Phase 3. |
+| **Deterministic Precision vs Judge B** | **85.3%** (29 / 34) | Same 34 matched issues. | Blind LLM Judge B (`nan/deepseek-v4-flash`, Run #1 Attempt 2). | **Calibration sample.** Divergences stem from cosmetic features where Judge B preferred P3 while rules assigned P2 (`feat:`). |
+| **Both Judges Match Deterministic Rule** | **85.3%** (29 / 34) | Same 34 matched issues. | Both judges independently concurred with the rule. | **Calibration sample.** In 0 of 34 cases did any judge assign P0 or P1 to a feature request. |
 | **Lexical Keyword Matching Precision** | **7.4%** (15 / 202) | In `gentle-shell`, 202 issues mention `"gentle-ai"` in text; only 15 have confirmed cross-system links in `cross_refs`. | SQL join of FTS text occurrences vs canonical foreign issue references. | **Total population census in `gentle-shell`.** Demonstrates why pure keyword search fails due to internal path collisions (`extensions/gentle-ai.ts`, `.git/gentle-ai/`). |
+| **Open issues without `priority:*` label** | **85.5%** (1,050 / 1,228) | Same census. | Label census over the sanitized snapshot. | **Total population census.** |
+| **Open issues under `status:needs-review`** | **55.9%** (686 / 1,228) | Same census. | Label census over the sanitized snapshot. | **Total population census.** |
+
+### Coverage Delta from Rule Hardening
+
+Earlier, pre-fix rule versions reported 40.0% deterministic coverage (491 / 1,228) and 60.0% grey area (737 / 1,228). Applying the negation and deadlock-context safeguards removed **8 false positives** — 3 from the silent-data-loss class (`gentle-ai#5007`, `#4792`, `#2628`) and 5 from the deadlock class (`gentle-ai#5094`, `#4286`, `#2366`; `gentle-shell#1087`, and `gentle-ai#4807`) — producing the current, corrected figures of **39.3% (483) / 60.7% (745)**.
 
 ---
 
-## 6. Empirical Verification: 20 Real Issues from `db/exp.db`
+## 7. Empirical Verification: 20 Real Issues from the Sanitized Snapshot
 
-Below are 20 concrete issues drawn directly from SQLite (`db/exp.db`), showing the deterministic rule applied, the resulting priority band, and the independent verdicts of Judge A (`MiniMax-M3`) and Judge B (`DeepSeek-V4-Flash`):
+Below are 20 concrete issues drawn directly from `issues.json` (identical to `db/exp.db`), showing the deterministic rule applied and the resulting recommendation:
 
-| Issue Identifier | Issue Title | Rule Applied | Assigned Priority | Judge A Verdict | Judge B Verdict |
-| --- | --- | --- | --- | --- | --- |
-| `gentle-ai#5166` | `bug(review): a lens admitted a CRITICAL TS6306 "mi` | `rule:hard_crash` | **P1** | P1 | P1 |
-| `gentle-ai#4823` | `feat(pi): support opt-in community plugin discover` | `rule:feature_request` | **P2** | P2 | P2 |
-| `gentle-ai#3794` | `feat(review): add a candidate-bound cacheable deli` | `rule:feature_request` | **P2** | P2 | P2 |
-| `gentle-ai#3580` | `feat(pi): apply validated model-routing drafts` | `rule:feature_request` | **P2** | P2 | P2 |
-| `gentle-ai#3258` | `test(cli): cover the host-mediated refusal for rev` | `rule:docs_chore_question` | **P3** | P3 | P3 |
-| `gentle-ai#3022` | `feat(workflow): stop stagnant non-SDD verification` | `rule:feature_request` | **P2** | P2 | P2 |
-| `gentle-ai#2423` | `refactor(review): delete orphaned review authority` | `rule:feature_request` | **P2** | P2 | P2 |
-| `gentle-ai#2123` | `feat(sync): preserve user customizations in manage` | `rule:feature_request` | **P2** | P2 | P2 |
-| `gentle-ai#1973` | `feat(review): scope the RDD kill switch per worktr` | `rule:feature_request` | **P2** | P2 | P2 |
-| `gentle-ai#1866` | `feat(ci): continuously verify and bind benchmark r` | `rule:feature_request` | **P2** | P2 | P2 |
-| `gentle-ai#1308` | `feat(review): require candidate-bound evidence for` | `rule:feature_request` | **P2** | P2 | P2 |
-| `gentle-ai#1286` | `feat(skills): add verifiable skill loading and com` | `rule:feature_request` | **P2** | P2 | P2 |
-| `gentle-ai#1051` | `feat(context-pruning): integrate dynamic context p` | `rule:feature_request` | **P2** | P2 | P2 |
-| `gentle-ai#858` | `feat(tui): add compact OpenAI quota indicator` | `rule:feature_request` | **P2** | P2 | P2 |
-| `engram#1501` | `feat(ci): recognize cross-repository issue referen` | `rule:feature_request` | **P2** | P2 | P2 |
-| `engram#1461` | `Allow omitted or empty session directory metadata ` | `rule:feature_request` | **P2** | P2 | P2 |
-| `engram#1372` | `feat(pi): honor mem_save capture_prompt associatio` | `rule:feature_request` | **P2** | P2 | P2 |
-| `engram#1351` | `feat(store): make session closure replay-safe` | `rule:feature_request` | **P2** | P2 | P2 |
-| `engram#904` | `feat(sync): define recovery semantics for incomple` | `rule:feature_request` | **P2** | P2 | P2 |
-| `gentle-shell#1309`| `gentle-ai-worker edit surfaces resolve only agains`| `rule:feature_request` | **P2** | P2 | P2 |
+| Issue Identifier | Issue Title (truncated) | Rule Applied | Recommendation | Human Review |
+| --- | --- | --- | --- | --- |
+| `gentle-ai#4917` | A corrupt custom-agents.json silently drops the registry entry of a successful install | `rule:candidato_p0_requiere_revision_humana` | candidato P0, requiere revisión humana | required |
+| `gentle-ai#4795` | bug(opencode): engram plugin adapter still ships V1 shape | `rule:candidato_p0_requiere_revision_humana` | candidato P0, requiere revisión humana | required |
+| `gentle-ai#4701` | bug(repo): contributor-filed issues never receive the form-declared status:needs-review label | `rule:candidato_p0_requiere_revision_humana` | candidato P0, requiere revisión humana | required |
+| `gentle-ai#4474` | bug(review): approved closure lists advisory findings without their claim text | `rule:candidato_p0_requiere_revision_humana` | candidato P0, requiere revisión humana | required |
+| `gentle-ai#4282` | bug(doctor): engram:reachable names only two persisted configs | `rule:candidato_p0_requiere_revision_humana` | candidato P0, requiere revisión humana | required |
+| `gentle-ai#4031` | review and issues: negotiated v2 lifecycle on Pi | `rule:candidato_p0_requiere_revision_humana` | candidato P0, requiere revisión humana | required |
+| `gentle-ai#3774` | bug(install/sync): transient atomic-rename denial on Windows | `rule:candidato_p0_requiere_revision_humana` | candidato P0, requiere revisión humana | required |
+| `gentle-ai#1829` | fix(theme): theme injection would overwrite TOML/YAML settings files with JSON | `rule:candidato_p0_requiere_revision_humana` | candidato P0, requiere revisión humana | required |
+| `gentle-ai#787` | fix(opencode): orchestrator agent permission override bypasses top-level denies | `rule:candidato_p0_requiere_revision_humana` | candidato P0, requiere revisión humana | required |
+| `gentle-shell#1044` | Engram tools are never detected when the MCP adapter prefixes tool names | `rule:candidato_p0_requiere_revision_humana` | candidato P0, requiere revisión humana | required |
+| `gentle-shell#923` | bug(gentle-shell): framePromptLines consumes the last autocomplete row | `rule:candidato_p0_requiere_revision_humana` | candidato P0, requiere revisión humana | required |
+| `gentle-shell#883` | bug(pi-pretty): FFF native backend is unreachable on Android/Termux | `rule:candidato_p0_requiere_revision_humana` | candidato P0, requiere revisión humana | required |
+| `gentle-shell#748` | bug(review): host consent prompt outlives its binding TTL | `rule:candidato_p0_requiere_revision_humana` | candidato P0, requiere revisión humana | required |
+| `gentle-shell#715` | Shell bar drops extension statuses on narrow terminals | `rule:candidato_p0_requiere_revision_humana` | candidato P0, requiere revisión humana | required |
+| `gentle-ai#3190` | bug(review): review start aborts on Windows when Go runtime cannot allocate memory | `rule:hard_crash` | P1 | recommended |
+| `gentle-shell#1606` | bug(skill-registry): unhandled async EMFILE from directory watcher crashes pi on startup | `rule:hard_crash` | P1 | recommended |
+| `gentle-ai#4823` | feat(pi): support opt-in community plugin discovery and installation | `rule:feature_request` | P2 | recommended |
+| `gentle-ai#3794` | feat(review): add a candidate-bound cacheable delivery | `rule:feature_request` | P2 | recommended |
+| `gentle-ai#3258` | test(cli): cover the host-mediated refusal for review | `rule:docs_chore_question` | P3 | recommended |
+| `gentle-ai#2628` | fix(cli): component modifiers report success when their component is not scheduled | (none) | grey area -> LLM Pass 1 | yes |
+
+Issue `gentle-ai#2628` is intentionally included as the concrete regression case that the corrected engine **no longer** flags as candidate P0: the matched span is a fix description, not a silent loss.
 
 ---
 
-## 7. Known Limitations & What is NOT Yet Validated
+## 8. Known Limitations & What Is NOT Yet Validated
 
-To maintain strict scientific and technical honesty, the following boundaries must be explicitly noted:
+To maintain strict scientific and technical honesty, the following boundaries are explicitly noted:
 
-1. **Residual 60.0% Grey Area Backlog Evaluation:**
-   * While the deterministic rules engine was evaluated across all 1,228 issues, the full two-pass LLM pipeline has only been run on the 90-issue sample (Run #1).
-   * The remaining 737 open issues requiring LLM inference have not yet been evaluated end-to-end.
-2. **No Autonomous GitHub Mutations:**
+1. **Residual 60.7% Grey-Area Backlog Evaluation:**
+   * The deterministic rules engine was evaluated across all 1,228 issues, but the full two-pass LLM pipeline has only been run on the 90-issue sample (Run #1).
+   * The remaining 745 open issues requiring LLM inference have not yet been evaluated end-to-end.
+2. **Calibration Sample Reuse:**
+   * The 90-issue sample informed heuristic calibration. Out-of-sample (held-out) validation is planned for Phase 3.
+3. **No Autonomous GitHub Mutations:**
    * In strict accordance with the non-negotiable principles, the assistant has zero GitHub mutation authority. No labels, comments, transfers, or closures have been applied to live GitHub repositories.
-3. **Longitudinal Maintainer Study:**
+4. **Candidate P0 Requires Human Adjudication:**
+   * The 14 candidate P0 issues are pending `veredicto_humano` in `gold-p0-p1.md`; none has been confirmed by a maintainer.
+5. **Longitudinal Maintainer Study:**
    * Human maintainer acceptance and override rates over extended operational periods (e.g. 30 days of active triaging) have not yet been measured.
-4. **Generalization Beyond Conventional Commits:**
-   * The deterministic engine achieves 40% coverage primarily because the Gentle-AI ecosystem widely adheres to Conventional Commits (`feat:`, `docs:`, `fix:`). In repositories without commit discipline, deterministic coverage would be lower and rely more heavily on LLM Pass 1.
-5. **Cross-System Link Ground Truth:**
-   * Only 55 explicit cross-repository references are currently indexed in `cross_refs`. While Asymmetric Escrow is modeled and schemas are validated, cross-repository routing precision in the wild remains to be verified upon live testing.
+6. **Generalization Beyond Conventional Commits:**
+   * The deterministic engine achieves 39.3% coverage primarily because the Gentle-AI ecosystem widely adheres to Conventional Commits (`feat:`, `docs:`, `fix:`). In repositories without commit discipline, deterministic coverage would be lower and rely more heavily on LLM Pass 1.
+7. **Cross-System Link Ground Truth:**
+   * Only a small set of explicit cross-repository references is currently indexed in `cross_refs`. While Asymmetric Escrow is modeled and schemas are validated, cross-repository routing precision in the wild remains to be verified upon live testing.

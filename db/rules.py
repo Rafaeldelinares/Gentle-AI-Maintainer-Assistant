@@ -5,10 +5,15 @@ rules.py — Deterministic triage rule engine for the Gentle AI ecosystem
 Applies code-based heuristics BEFORE invoking an LLM:
   1. Features / enhancements -> P2 (rule:feature_request)
   2. Docs / chores / questions -> P3 (rule:docs_chore_question)
-  3. Silent data loss / corruption -> P0 (rule:silent_data_loss)
+  3. Silent data loss / corruption -> candidato P0, requiere revisión humana (rule:candidato_p0_requiere_revision_humana)
   4. Panic / SIGSEGV / hard crash without workaround -> P1 (rule:hard_crash)
   5. Crash WITH documented workaround / retry -> P2 (rule:crash_with_workaround_demoted_to_p2)
   6. Cross-repository links (cross_refs) -> cross classification
+
+Governance Invariants:
+  - Deterministic P0 is strictly a candidate ("candidato P0, requiere revisión humana"), never an autonomous final decision.
+  - Negations ("no data loss", "without data loss", "is not a deadlock") and fix descriptions ("from being silently dropped to being rejected") never trigger high-priority rules.
+  - Deadlocks require process or thread context (goroutine, thread, mutex, process, hang); metaphorical deadlocks ("two rules deadlock") are ignored.
 
 Usage:
   ./rules.py
@@ -23,22 +28,54 @@ from pathlib import Path
 DB_PATH = Path(__file__).parent / "exp.db"
 SNAPSHOT_PATH = Path(__file__).parent.parent / "issues.json"
 
-# Compiled regex patterns for deterministic text classification
-# 1. P0: Silent data loss / corruption (non-capturing groups, bounded word characters)
-RE_P0_SILENT = re.compile(
+# Label constants
+P0_CANDIDATE_LABEL = "candidato P0, requiere revisión humana"
+RULE_P0_CANDIDATE = "rule:candidato_p0_requiere_revision_humana"
+
+# 1. P0: Silent data loss & corruption base pattern
+RE_P0_SILENT_BASE = re.compile(
     r"(?:\bsilent(?:ly)?\s+(?:corrupt(?:s|ed|ing|ion)?|delet(?:es|ed|ing|ion)?|drop(?:s|ped|ping)?|overwrit(?:es|ing)?|overwrote|overwritten|los(?:es|t|ing)?|fail(?:s|ed|ing)?\s+to\s+save)\b|\bdata\s+loss\b)",
     re.IGNORECASE,
 )
 
-# Negation safeguards for P0 (e.g. 'prevents data loss', 'no data loss' must NOT trigger P0)
-RE_P0_NEGATION = re.compile(
-    r"\b(?:no|not|prevents?|preventing|avoid(?:s|ed|ing)?|without|protect(?:s|ed|ing)?\s+against|safeguard(?:s|ed|ing)?\s+against|zero)\s+(?:silent(?:ly)?\s+)?(?:data\s+loss|corruption|corrupting)\b",
+# Negation safeguards for data loss (e.g. 'no data loss', 'without data loss', 'not data loss', 'zero data loss')
+RE_DATA_LOSS_NEGATION = re.compile(
+    r"\b(?:no|not|without|zero|neither|nor|prevent(?:s|ed|ing)?|avoid(?:s|ed|ing)?|protect(?:s|ed|ing)?\s+against|safeguard(?:s|ed|ing)?\s+against)\b[^.\n;]{0,60}?\bdata\s+loss\b|"
+    r"\bdata\s+loss\b[^.\n;]{0,50}?\b(?:is\s+(?:claimed|none)|avoided|prevented|not\s+observed|not\s+found)\b",
     re.IGNORECASE,
 )
 
-# 2. P1: Hard crashes (without overfitted specific lineage/loop terms)
-RE_P1_CRASH = re.compile(
-    r"(?:\bpanic:\s*|\bSIGSEGV\b|\bfatal error:\s*runtime\b|\bsegmentation fault\b|\bNullPointerException\b|\buncaught exception\b|\bdeadlock(?:ed)?\b|\bstack overflow\b)",
+# Descriptions of fixes or transitions (e.g. 'from being silently dropped to being rejected')
+RE_FIX_DESCRIPTION = re.compile(
+    r"\bfrom\s+being\s+silent(?:ly)?\s+(?:corrupt|delet|drop|overwrit|los)\w*\s+to\s+being\b|"
+    r"\b(?:prevent(?:s|ed|ing)?|fixed|stops?|stopped|protected)\s+(?:\w+\s+){0,5}from\s+being\s+silent",
+    re.IGNORECASE,
+)
+
+# General silent negation
+RE_SILENT_NEGATION = re.compile(
+    r"\b(?:no|not|without|zero)\s+(?:silent(?:ly)?\s+)?(?:data\s+loss|corruption)\b",
+    re.IGNORECASE,
+)
+
+# 2. P1: Hard crashes core runtime errors
+RE_P1_CRASH_CORE = re.compile(
+    r"(?:\bpanic:\s*|\bSIGSEGV\b|\bfatal error:\s*runtime\b|\bsegmentation fault\b|\bNullPointerException\b|\buncaught exception\b|\bstack overflow\b)",
+    re.IGNORECASE,
+)
+
+# Deadlock base pattern
+RE_DEADLOCK_BASE = re.compile(r"\bdeadlock(?:ed|s)?\b", re.IGNORECASE)
+
+# Negation for deadlock (e.g. 'is not a deadlock', 'not a deadlock')
+RE_DEADLOCK_NEGATION = re.compile(
+    r"\b(?:not|never|is\s+not|hardly)\s+(?:a\s+)?deadlock\b",
+    re.IGNORECASE,
+)
+
+# Process or thread concurrency context required for deadlock to be a real crash
+RE_CONCURRENCY_CONTEXT = re.compile(
+    r"\b(?:goroutines?|threads?|mutex(?:es)?|locks?|process(?:es)?|hangs?|hanging|workers?)\b",
     re.IGNORECASE,
 )
 
@@ -66,9 +103,61 @@ def has_active_workaround(text: str) -> bool:
     return bool(RE_WORKAROUND_POSITIVE.search(text))
 
 
+def has_silent_data_loss(text: str) -> bool:
+    """
+    Returns True if text reports an unnegated silent data loss or corruption event.
+    Rejects negations ('no data loss', 'without data loss') and fix descriptions.
+    """
+    for m in RE_P0_SILENT_BASE.finditer(text):
+        matched = m.group(0).lower()
+        start = max(0, m.start() - 80)
+        end = min(len(text), m.end() + 80)
+        window = text[start:end]
+
+        # Reject fix descriptions ('from being silently dropped to being rejected')
+        if RE_FIX_DESCRIPTION.search(window):
+            continue
+
+        # Reject data loss negations
+        if "data loss" in matched:
+            if RE_DATA_LOSS_NEGATION.search(window):
+                continue
+
+        # Reject general silent negations
+        if RE_SILENT_NEGATION.search(window):
+            continue
+
+        return True
+    return False
+
+
+def is_hard_crash(text: str) -> bool:
+    """
+    Returns True if text reports a hard runtime crash (SIGSEGV, panic, stack overflow)
+    or a concurrency deadlock with explicit thread/process/mutex/hang context.
+    Rejects 'not a deadlock' and metaphorical deadlocks ('two rules deadlock each other').
+    """
+    if RE_P1_CRASH_CORE.search(text):
+        return True
+
+    for m in RE_DEADLOCK_BASE.finditer(text):
+        start = max(0, m.start() - 60)
+        end = min(len(text), m.end() + 60)
+        window = text[start:end]
+
+        if RE_DEADLOCK_NEGATION.search(window):
+            continue
+        if RE_CONCURRENCY_CONTEXT.search(window):
+            return True
+
+    return False
+
+
 def classify_issue_deterministically(row, labels, cross_refs):
     """
     Returns (band, cross, rule_name) or (None, cross, None) if indeterminate.
+    
+    Invariant: P0 is strictly 'candidato P0, requiere revisión humana', never a final decision.
     """
     row_dict = dict(row) if hasattr(row, "keys") else (row or {})
     title = row_dict.get("title") or ""
@@ -87,12 +176,12 @@ def classify_issue_deterministically(row, labels, cross_refs):
     label_set = {l.lower() for l in labels}
     is_bug = prefix in ("bug", "fix") or "type:bug" in label_set or "bug" in label_set
 
-    # Check P0: Silent data loss / corruption (only on bugs, excluding explicit negations)
-    if is_bug and RE_P0_SILENT.search(full_text) and not RE_P0_NEGATION.search(full_text):
-        return "P0", cross, "rule:silent_data_loss"
+    # Check P0: Silent data loss / corruption -> Candidate P0, requires human review
+    if is_bug and has_silent_data_loss(full_text):
+        return P0_CANDIDATE_LABEL, cross, RULE_P0_CANDIDATE
 
     # Check P1 vs P2 (Rule H9 & H10): Hard crash / fatal engine stall
-    if is_bug and RE_P1_CRASH.search(full_text):
+    if is_bug and is_hard_crash(full_text):
         if has_active_workaround(full_text):
             return "P2", cross, "rule:crash_with_workaround_demoted_to_p2"
         return "P1", cross, "rule:hard_crash"
@@ -147,7 +236,7 @@ def run_snapshot_evaluation(snapshot_data):
     print("  Breakdown by deterministic rule:")
     for rule, cnt in sorted(rule_counts.items(), key=lambda x: x[1], reverse=True):
         pct = (100.0 * cnt / total) if total > 0 else 0.0
-        print(f"    - {rule:38s}: {cnt:4d} issues ({pct:.1f}%)")
+        print(f"    - {rule:42s}: {cnt:4d} issues ({pct:.1f}%)")
     print("════════════════════════════════════════════════════════════════════")
     return 0
 
@@ -248,7 +337,7 @@ def main():
     print(f"  Residual grey-area (requires LLM): {total_all - covered_all} ({100.0 * (total_all - covered_all) / total_all:.1f}%)\n")
     print("  Breakdown by deterministic rule:")
     for rule, cnt in sorted(rule_counts.items(), key=lambda x: x[1], reverse=True):
-        print(f"    - {rule:38s}: {cnt:4d} issues ({100.0 * cnt / total_all:.1f}%)")
+        print(f"    - {rule:42s}: {cnt:4d} issues ({100.0 * cnt / total_all:.1f}%)")
 
     # Evaluate against the 90-issue sample (Run #1) where we have Judge A and Judge B votes
     cur.execute("""
@@ -292,8 +381,9 @@ def main():
 
         if band is not None:
             sample_covered += 1
-            ok_a = (band == va)
-            ok_b = (band == vb)
+            eval_band = "P0" if "P0" in band else band
+            ok_a = (eval_band == va)
+            ok_b = (eval_band == vb)
             if ok_a: match_a += 1
             if ok_b: match_b += 1
             if ok_a and ok_b: both_match += 1
@@ -308,8 +398,10 @@ def main():
 
     print("\n  Sample deterministic classification vs judges:")
     for slug, num, r_band, rule, va, vb in evaluated[:10]:
-        status = "✔" if va == r_band and vb == r_band else "~"
-        print(f"    [{status}] {slug:12s} #{num:<4d} -> {r_band} ({rule:35s}) | Judge A: {va} | Judge B: {vb}")
+        display_band = "P0 (candidato)" if "P0" in r_band else r_band
+        eval_band = "P0" if "P0" in r_band else r_band
+        status = "✔" if va == eval_band and vb == eval_band else "~"
+        print(f"    [{status}] {slug:12s} #{num:<4d} -> {display_band:16s} ({rule:40s}) | Judge A: {va} | Judge B: {vb}")
 
     conn.close()
     return 0

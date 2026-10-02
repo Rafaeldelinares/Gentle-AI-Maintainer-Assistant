@@ -298,13 +298,14 @@ directory, and not part of another system.
 **[V]** An earlier revision of this document claimed that `gentle-shell` "does not exist as a
 system". **That claim was wrong** and is superseded by this section.
 
-**[V]** Cause of the error: the local path `/home/rafael/proyectos/gentle-shell` is a **stale Pi
-scratch directory** — three files (`/.atl/skill-registry.md`, `/.atl/.skill-registry.cache.json`,
-`/.gitignore`), not a Git repository, and whose own skill-registry header reads
-`# Skill Registry — kernel`. It is unrelated to the repository, which is not cloned there.
+**[V]** Cause of the error: a local scratch directory formerly assumed to be the `gentle-shell`
+checkout is a **stale Pi scratch directory** — three files (`/.atl/skill-registry.md`,
+`/.atl/.skill-registry.cache.json`, `/.gitignore`), not a Git repository, and whose own
+skill-registry header reads `# Skill Registry — kernel`. It is unrelated to the repository, which
+is not cloned there.
 
-**[V]** A separate local clone exists at `/home/rafael/proyectos/gentle-pi` (the former name). It
-is **stale**: branch `test/shell-gauge-coverage`, HEAD `a275e859` (2026-09-13), behind
+**[V]** A separate stale local clone existed under the former project name (`gentle-pi`). It was
+**stale**: branch `test/shell-gauge-coverage`, HEAD `a275e859` (2026-09-13), behind
 `origin/main`. Any finding read from that working tree must be re-verified against the default
 branch.
 

@@ -1,7 +1,7 @@
 # AGENTS.md — Gentle-AI-Maintainer-Assistant
 
 > **Project:** Gentle-AI-Maintainer-Assistant  
-> **Status:** Proposal & Design Phase (Phases 0–7 Complete & Empirically Validated)  
+> **Status:** Proposal & Design Phase (Phases 0–7 documented; Phase 1 correction and Phase 1.1 rule hardening under external review)  
 > **Ecosystem:** [Gentleman-Programming](https://github.com/Gentleman-Programming) (`gentle-ai`, `engram`, `gentle-shell`)
 
 This document establishes the authoritative governance protocol and architectural roadmap for the Gentle AI Maintainer Assistant.
@@ -28,8 +28,17 @@ This document establishes the authoritative governance protocol and architectura
 ### Phase 1: Ecosystem Inspection & Backlog Census
 * **Census completed:** 1,228 open issues across `gentle-ai` (733), `gentle-shell` (424, formerly `gentle-pi`), and `engram` (71).
 * **Triage bottleneck:** High issue-to-maintainer ratio across the three core repositories.
-* **Triage debt:** 76.5% of open issues are completely untriaged.
+* **Triage debt:** Only 178 of 1,228 open issues (14.5%) carry an explicit `priority:*` label; 1,050 (85.5%) carry none, and 686 (55.9%) sit under `status:needs-review`.
+* **Deterministic coverage:** `db/rules.py` resolves 483 of 1,228 open issues (39.3%) with pure code; 745 (60.7%) remain grey-area for the LLM pipeline.
 * Documented in `docs/phase-1-ecosystem-inspection.md`.
+
+### Phase 1.1: Deterministic Rule Hardening
+* Negation and context safeguards added to the deterministic engine: patterns never fire on `no/without/not ... data loss`, on `is not a deadlock`, or on fix descriptions such as *"from being silently dropped to being rejected"*.
+* `deadlock` now requires process or thread context (goroutine, thread, mutex, process, hang); metaphorical deadlocks (*"two rules deadlock each other"*) are rejected.
+* Deterministic silent-data-loss matches are emitted strictly as **"candidato P0, requiere revisión humana"** (`rule:candidato_p0_requiere_revision_humana`), enforced bidirectionally by the schema, never as a final P0.
+* Real-issue regression cases `gentle-ai#5007`, `#4792`, `#4807`, `#2628` are covered by tests and must not trigger candidate P0 or P1.
+* Human-review gold set published as `gold-p0-p1.md` with `veredicto_humano: pendiente`.
+* Rule suite `test_rules.py` uses concrete cases, not frozen totals, and validates snapshot self-consistency dynamically.
 
 ### Phase 2: Problem Definition & Operational Boundaries
 * Characterized cross-system coupling edges and the 4 canonical implication patterns ((a)–(d)).
@@ -59,7 +68,7 @@ This document establishes the authoritative governance protocol and architectura
   * `schemas/triage-inference.schema.json`
   * `schemas/maintainer-decision.schema.json`
   * `schemas/triage-batch-report.schema.json`
-* Automated validation test suite (`schemas/validate.py`) passing 9/9 positive and fail-closed negative tests.
+* Automated validation test suite (`schemas/validate.py`) passing 12/12 positive and fail-closed negative tests, including bidirectional enforcement that a candidate P0 label requires the candidate rule and cannot be emitted as a final P0.
 * Documented in `schemas/README.md`.
 
 ### Phase 7: Canonical Prompts Suite
@@ -72,5 +81,5 @@ This document establishes the authoritative governance protocol and architectura
 
 ### Phase 8: Runtime Implementation (Pending Maintainer Approval)
 * Packaging CLI tool and Pi subagent integration.
-* Full backlog sweep across remaining 749 grey-area issues.
+* Full backlog sweep across remaining 745 grey-area issues.
 * Interactive TUI / dashboard for maintainer review.
