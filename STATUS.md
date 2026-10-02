@@ -32,6 +32,8 @@
 | **C1b, C2, C3** | el resto del lote | sin revisar todavía; se revisan como rangos commiteados |
 
 * **Hallazgos reales encontrados por las lentes:** **6 CRITICAL**, todos introducidos por este trabajo y todos corregidos — path traversal en `/static/`, 500 por input inválido, README con el árbol roto, actor forjable, carrera en `move_card`, y contradicciones de recuentos en la documentación. Ninguno llegó a un revisor humano.
+* **Línea estacionada:** `review-7cb7f5fd9a7b5c39` (C1a) quedó en `action: recover` / `scope_changed` porque HEAD avanzó mientras sus lentes corrían. Contiene **hallazgos ya producidos y no leídos** sobre `board/core.py`. Desbloquearla es una operación **del host**: ni el canal de captura ni la operación `recover` de la fachada pueden completarla desde acá sin valores nativos que no se deben inventar.
+* **Regla corregida (D-027):** **un commit sin revisar por vez.** Commitear → revisar el rango → no commitear nada más hasta que cierre.
 * **Validación dirigida pendiente (D-028):** la corrección de esas contradicciones está aplicada y verificada por tests, pero **no tiene cierre formal**: la fachada no puede entregar el slot `provider_targeted_validator`. Se declara **pendiente**, no cerrada.
 * **Precisión sin medir**: el instrumento existe, las etiquetas humanas son 0. La cifra está pendiente de que una persona etiquete.
 * **Vista de sistema, pasada de LLM sobre la zona gris, propuestas de regla, `REPORT.md` y modo sombra**: no implementados.
