@@ -114,6 +114,31 @@ python3 db/rules.py
 
 ---
 
+## 🔗 Direct Links for Reviewers & AI Assistants
+
+If you or your AI agent need direct, absolute links to inspect the core files:
+
+* **Deterministic Rules Engine (`rules.py`):**
+  * GitHub UI: https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/db/rules.py
+  * Raw Code: https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/db/rules.py
+* **Calibrated Triage Model (`triage-model.md`):**
+  * GitHub UI: https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/docs/triage-model.md
+  * Raw Markdown: https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/docs/triage-model.md
+* **Two-Pass Architecture (`architecture.md`):**
+  * GitHub UI: https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/docs/architecture.md
+  * Raw Markdown: https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/docs/architecture.md
+* **Human Authority & Decision Model (`decision-model.md`):**
+  * GitHub UI: https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/docs/decision-model.md
+  * Raw Markdown: https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/docs/decision-model.md
+* **Master System Prompt (`system-triage-agent.md`):**
+  * GitHub UI: https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/prompts/system-triage-agent.md
+  * Raw Markdown: https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/prompts/system-triage-agent.md
+* **Triage Inference Schema (`triage-inference.schema.json`):**
+  * GitHub UI: https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/schemas/triage-inference.schema.json
+  * Raw JSON: https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/schemas/triage-inference.schema.json
+
+---
+
 ## 💬 Feedback & Open Questions for Reviewers
 
 We actively invite feedback from other maintainers and contributors:
