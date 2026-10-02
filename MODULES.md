@@ -1,23 +1,25 @@
-# MODULES.md — Mechanical Read-Only Modules (A, B, C)
+# MODULES.md — Mechanical Read-Only Modules (A, B, C, D)
 
-> **What this file is.** The three modules that need **no human labels** to be useful: they compare each report with its own issue form, correlate probable duplicates by shared error signatures, and surface cross-repository references. Source, method, output and limits are all here.
+> **What this file is.** The four modules that need **no human labels** to be useful: they compare each report with its own issue form, correlate probable duplicates by shared error signatures, surface cross-repository references, and flag references to source that no longer exists. Source, method, output and limits are all here.
 
-> **Provenance:** module source at commit `8081020`. Reports regenerate deterministically from the frozen snapshot (`issues.json`, 1,228 issues).
+> **Provenance:** module source at commit `7638f09`. Reports regenerate deterministically from the frozen snapshot (`issues.json`, 1,228 issues); `tools/determinism_check.py` proves byte-identical output across processes.
 
-> **Read-only.** No module writes to GitHub, to `cross_refs`, or to the dataset. No `veredicto_humano` is ever filled.
+> **Read-only.** No module writes to GitHub, to `cross_refs`, or to the dataset. No `veredicto_humano` is ever filled. Nothing is closed or relabelled.
 
 ---
 
 ## 0. One-Screen Summary
 
-| Module | Question it answers | Output | Evidence | Limit |
+| Module | Question it answers | Output | Headline | Limit |
 | --- | --- | --- | --- | --- |
-| **A** completeness | Is this report missing the fields its own form requires? | `report-completeness.md` | 1114 issues matched to a template; 1043 form-filed; **313 incomplete**; 71 outside the form | Signals completeness, not merit; pre-template reports excluded |
-| **B** duplicates | Are two open issues probably the same? | `report-duplicates.md` | **7 strong** and 101 weaker pairs out of 108 candidates | Shared identifiers are evidence, not proof; never closes or merges |
-| **C** cross-repo links | Does this issue reference another repository? | `report-cross-links.md` | 48 explicit references; **15 resolve** to an open issue; 81 unnumbered repo refs; 914 bare mentions | Only an explicit `repo#N` proposes a link; a mention never does |
+| **A** completeness | Is this report missing what its own form requires? | `report-completeness.md` | **313 incomplete** of 1043 form-filed (71 outside the form, excluded) | Completeness is a signal, not merit |
+| **B** duplicates | Are two open issues probably the same? | `report-duplicates.md` | **7 strong** + 101 weaker pairs of 108 candidates | Shared identifiers are evidence, not proof |
+| **C** cross-repo links | Does this issue reference another repository? | `report-cross-links.md` | 48 explicit refs, **15 resolve**; 914 bare mentions | Only an explicit `repo#N` proposes a link |
+| **D** possibly obsolete | Does this issue reference source that no longer exists? | `report-obsolete.md` | **54 Class A** (deleted path, verifiable) + 155 Class B (weak, not an obsolescence claim) | Class A still needs human judgment |
 
 ```bash
-python3 tools/run_reports.py     # regenerates all three reports
+python3 tools/run_reports.py        # regenerate all four reports
+python3 tools/determinism_check.py   # fail if any report changes across processes
 ```
 
 ---
@@ -26,9 +28,7 @@ python3 tools/run_reports.py     # regenerates all three reports
 
 **Question:** can this issue be triaged now, or is the report missing what its own repository's form asked for?
 
-**Method:** parse `products/<repo>/.github/ISSUE_TEMPLATE/bug_report.yml` and `feature_request.yml` with PyYAML (fallback: an indentation-aware scanner) and read the fields marked `validations.required: true` — the maintainers' own ground truth, not an invented checklist. An issue is matched to the bug or feature template from its title prefix and labels. A required field counts as present when a `###`/`##` heading matches it **or** a rendered inline label (`**Gentle AI Version:** …`) carries a non-empty value. Attestation checkboxes are reported separately from triage-critical content, and an issue with no template heading at all is reported as *outside the form*, not as incomplete.
-
-**Findings:**
+**Method:** parse `products/<repo>/.github/ISSUE_TEMPLATE/bug_report.yml` and `feature_request.yml` with PyYAML (fallback: an indentation-aware scanner) and read the fields marked `validations.required: true` — the maintainers' own ground truth, not an invented checklist. An issue is matched to the bug or feature template from its title prefix and labels. A required field counts as present when a heading matches it **or** a rendered inline label (`**Gentle AI Version:** …`) carries a non-empty value; GitHub renders form inputs inline, so a heading-only check produced false "missing" on well-formed reports. Attestation checkboxes are reported separately from triage-critical content, and an issue with no template heading at all is reported as *outside the form*, never as incomplete.
 
 | Metric | Value |
 | --- | --- |
@@ -38,7 +38,7 @@ python3 tools/run_reports.py     # regenerates all three reports
 | Complete | n/a |
 | Missing at least one required content field | **313** |
 
-**Limit.** This is a completeness signal, not an accusation: a report can be complete and still wrong, and a report outside the form may be perfectly actionable. The maintainer decides whether to ask for the missing data.
+**Limit.** A report can be complete and still wrong, and one outside the form can be perfectly actionable. The maintainer decides whether to ask for the missing data.
 
 ---
 
@@ -46,12 +46,10 @@ python3 tools/run_reports.py     # regenerates all three reports
 
 **Question:** are two open issues in the same repository probably the same problem?
 
-**Method:** deterministic evidence only. Signatures: exception/panic class, error code (`TS6306`, `ENOENT`, `EPERM`…), `file:line` stack frame, quoted error string containing an error keyword, exit code, goroutine dump. Titles are normalized (conventional prefix, versions, hashes, numbers, punctuation and stopwords removed). A signature is *rare* when it appears in at most 4 issues in that repository. Tiers:
+**Method:** deterministic evidence only. Signatures: exception/panic class, error code (`TS6306`, `ENOENT`, `EPERM`…), `file:line` stack frame, quoted error string containing an error keyword, exit code, goroutine dump. Titles are normalized (prefix, versions, hashes, numbers, punctuation and stopwords removed). A signature is *rare* when it appears in at most 4 issues in that repository. Tiers:
 
 - **Strong evidence:** identical normalized titles, or several shared rare signatures with high signature overlap, or a shared rare signature with title Jaccard ≥ 0.75.
 - **Weaker evidence:** a single shared rare signature, or high title similarity alone.
-
-**Findings:**
 
 | Metric | Value |
 | --- | --- |
@@ -59,7 +57,7 @@ python3 tools/run_reports.py     # regenerates all three reports
 | Strong-evidence pairs | 7 |
 | Weaker-evidence pairs | 101 |
 
-**Limit.** "Strong evidence" means shared distinctive identifiers, **not** certainty: sibling issues that implement the same feature often share exception names and configuration strings. The report says *candidate pair*, never *duplicate*, and every entry is `veredicto_humano: pendiente`. The module never closes or merges anything.
+**Limit.** "Strong evidence" means shared distinctive identifiers, **not** certainty: sibling issues implementing the same feature share exception names and configuration strings. The report says *candidate pair*, never *duplicate*.
 
 ---
 
@@ -69,24 +67,36 @@ python3 tools/run_reports.py     # regenerates all three reports
 
 **Method:** three evidence levels. (1) An explicit `owner/repo#N` or `repo#N` whose number resolves to an open issue → propose a link. (2) `owner/repo` without a number → record, propose nothing. (3) A bare repository-name mention → record as the weakest signal, propose nothing.
 
-**Findings:**
-
 | Metric | Value |
 | --- | --- |
-| Issues with a structured `cross_refs` entry | 26 |
 | Explicit references to another repo | 48 |
 | — resolving to an open issue (linkable) | **15** |
 | — not resolving (closed, renamed, typo) | 33 |
 | `owner/repo` reference without a number | 81 |
 | Bare repository-name mention, no `cross_refs` | 914 |
 
-**This reframes an earlier audit figure.** `AUDIT.md` reported "345 issues mention another repo with no structured link". Module C shows the actionable subset is much smaller: only 33 issues carry an explicit `repo#N` reference, and 15 resolve to an open issue. The rest are prose mentions — install instructions, comparisons, unrelated text — and a mention is not a dependency. Recording mentions as links would flood a maintainer who is already triaging 40 issues.
-
-**Limit.** The module cannot tell a dependency from a comparison, so it reports and does not classify. It never writes `cross_refs`.
+**This reframes an earlier audit figure.** `AUDIT.md` reported "345 issues mention another repo with no structured link". The actionable subset is much smaller: 33 issues carry an explicit `repo#N` reference and 15 resolve to an open issue. The rest are prose mentions — install instructions, comparisons, unrelated text — and a mention is not a dependency. Recording mentions as links would flood a maintainer who is already triaging 40 issues.
 
 ---
 
-## 4. Source (verbatim, at commit `8081020`)
+## 4. Module D — Possibly Obsolete Issues
+
+**Question:** does this issue reference a source path, CLI flag or symbol that no longer exists in the repository?
+
+**Method:** two evidence classes kept strictly apart. **Class A:** the referenced path appears in the repository's own git history as a deletion (`git log --diff-filter=D --name-only --all`) and is absent from the current tree — verifiable obsolescence. **Class B:** a path, flag or symbol absent from the checkout with **no deletion record** — likely another repository or the installed package layout, and explicitly *not* an obsolescence claim. Flags and symbols are matched as fixed strings anywhere in tracked source via a single batched `git grep`.
+
+| Metric | Value |
+| --- | --- |
+| Class A — issues referencing a deleted path (verifiable) | **54** |
+| Class B — issues with an unresolved reference (weak) | 155 |
+
+**Why the split exists.** The first implementation reported 194 issues, but inspection showed most were misattributions: `--claude-code` is not a gentle-ai flag string, and `assets/agents/sdd-apply.md` belongs to the installed package layout, not the developer checkout. Mixing those with genuine cases (`internal/components/communitytool/rtk_runtime.go`, deleted in history) would have taught the maintainer to ignore the report.
+
+**Limit.** Class A is verifiable but still needs human judgment: an issue can deliberately discuss removed code. Every row cites the token, the sentence and the commit the check ran against.
+
+---
+
+## 5. Source (verbatim, at commit `7638f09`)
 
 ### `modules/common.py`
 
@@ -747,7 +757,8 @@ def main():
             if df[(issue["slug"], sig)] <= RARE_MAX:
                 sig_index[(issue["slug"], sig)].append(issue_ref(issue))
 
-    for (slug, sig), members in sig_index.items():
+    for (slug, sig) in sorted(sig_index):
+        members = sig_index[(slug, sig)]
         if len(members) < 2:
             continue
         for a, b in itertools.combinations(sorted(members), 2):
@@ -772,10 +783,11 @@ def main():
     # Candidate pairs from near-identical titles (token index to avoid O(n^2)).
     token_index = collections.defaultdict(list)
     for issue in issues:
-        for token in set(titles[issue_ref(issue)]):
+        for token in sorted(set(titles[issue_ref(issue)])):
             token_index[(issue["slug"], token)].append(issue_ref(issue))
 
-    for (slug, token), members in token_index.items():
+    for (slug, token) in sorted(token_index):
+        members = token_index[(slug, token)]
         if len(members) < 2 or len(members) > 40:
             continue
         for a, b in itertools.combinations(sorted(members), 2):
@@ -785,7 +797,9 @@ def main():
                 add_pair(a, b, 60 + int(ja * 30), "medium", shared)
 
     order = {"high": 0, "medium": 1}
-    ranked = sorted(pairs.items(), key=lambda kv: (-kv[1]["score"], order.get(kv[1]["tier"], 2)))
+    # A total ordering: score, tier, then the pair keys, so the report is byte-identical
+    # across processes regardless of PYTHONHASHSEED-driven set iteration order.
+    ranked = sorted(pairs.items(), key=lambda kv: (-kv[1]["score"], order.get(kv[1]["tier"], 2), kv[0][0], kv[0][1]))
 
     high = [kv for kv in ranked if kv[1]["tier"] == "high"]
     medium = [kv for kv in ranked if kv[1]["tier"] == "medium"]
@@ -1080,6 +1094,337 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
+### `modules/obsolete.py`
+
+```python
+#!/usr/bin/env python3
+"""
+obsolete.py — Module D (read-only).
+
+Finds issues that reference source paths, CLI flags or symbols that no longer exist in
+the repository's current checkout, i.e. **possible obsolete issues**.
+
+Two evidence classes, kept strictly apart:
+
+  Class A — deleted path (strong).
+      The referenced path exists in the repository's own git history as a deleted path
+      and is absent from the current tree. This is verifiable obsolescence.
+
+  Class B — unresolved reference (weak).
+      A path, flag or symbol that is absent from the current checkout but has no
+      deletion record in this repository. It may belong to another repository, to the
+      installed package layout, or to work not yet landed. Never presented as obsolete.
+
+Every suggestion cites the exact token, the sentence, the repository and the commit.
+Nothing is closed, relabelled or commented. Every entry is `veredicto_humano: pendiente`.
+
+Requires the vendored checkouts under `products/` (see `sync-products.sh`).
+
+  python3 modules/obsolete.py
+"""
+
+import collections
+import os
+import re
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from common import (  # noqa: E402
+    ROOT, REPO_SLUGS, load_issues, issue_link, issue_ref, issue_title,
+    issue_text, write_report, first_sentence,
+)
+
+PRODUCTS = ROOT / "products"
+
+SOURCE_EXTS = (
+    "go|ts|tsx|js|jsx|mjs|cjs|py|rs|java|kt|rb|cs|c|cc|cpp|h|hpp|sql|sh|bash|"
+    "md|json|json5|yml|yaml|toml|css|scss|html|vue|svelte|lua|proto|graphql"
+)
+
+PLAUSIBLE_ROOTS = {
+    "internal", "lib", "libs", "cmd", "pkg", "src", "source", "docs", "doc", "tests", "test",
+    "bin", "scripts", "script", "packages", "package", "extensions", "extension", "sdd",
+    "prompts", "prompt", "skills", "skill", "schemas", "schema", "contracts", "contract",
+    "api", "server", "client", "app", "apps", "core", "modules", "module", "config",
+    "configs", "assets", "tools", "tool", "ui", "web", "frontend", "backend", "dist", "build",
+    ".github", "templates", "fixtures", "examples", "benches", "bench", "migrations",
+}
+
+PATH_RE = re.compile(rf"(?<![\w./~-])((?:[\w.@+-]+/)+[\w.@+-]+\.(?:{SOURCE_EXTS}))\b")
+FLAG_RE = re.compile(r"(?<![\w-])(--[a-z][a-z0-9]*(?:-[a-z0-9]+){1,4})(?![\w-])")
+SYMBOL_RE = re.compile(r"`([A-Za-z_][A-Za-z0-9_]{4,}(?:\.[A-Za-z_][A-Za-z0-9_]{2,})?)\s*\(\)?`")
+
+SKIP_PATH_PARTS = ("node_modules/", ".git/", "site-packages/", "dist-packages/")
+
+
+def git(repo, *args):
+    return subprocess.run(
+        ["git", "-C", str(repo)] + list(args),
+        capture_output=True, text=True, check=False,
+    )
+
+
+def repo_commit(slug):
+    repo = PRODUCTS / slug
+    if not (repo / ".git").exists():
+        return None
+    out = git(repo, "rev-parse", "--short", "HEAD")
+    return out.stdout.strip() if out.returncode == 0 else None
+
+
+def tracked_paths(slug):
+    out = git(PRODUCTS / slug, "ls-files")
+    if out.returncode != 0:
+        return set()
+    return {line.strip() for line in out.stdout.splitlines() if line.strip()}
+
+
+def deleted_paths(slug):
+    """Paths that appear as deletions anywhere in the repository history."""
+    out = git(PRODUCTS / slug, "log", "--diff-filter=D", "--name-only", "--pretty=format:", "--all")
+    if out.returncode != 0:
+        return set()
+    return {line.strip() for line in out.stdout.splitlines() if line.strip()}
+
+
+def looks_like_repo_path(path):
+    if any(part in path for part in SKIP_PATH_PARTS):
+        return False
+    if path.startswith(("http/", "https/", "www/")):
+        return False
+    return path.split("/", 1)[0].lower() in PLAUSIBLE_ROOTS
+
+
+def extract_references(text, limit_paths=25, limit_flags=15, limit_symbols=10):
+    refs = {"paths": [], "flags": [], "symbols": []}
+    seen = {"paths": set(), "flags": set(), "symbols": set()}
+    for m in PATH_RE.finditer(text):
+        p = m.group(1)
+        if not looks_like_repo_path(p) or p in seen["paths"]:
+            continue
+        if len(refs["paths"]) >= limit_paths:
+            break
+        seen["paths"].add(p)
+        refs["paths"].append((p, first_sentence(text[max(0, m.start() - 50):m.end() + 50])))
+    for m in FLAG_RE.finditer(text):
+        f = m.group(1)
+        if f in seen["flags"] or len(refs["flags"]) >= limit_flags:
+            continue
+        seen["flags"].add(f)
+        refs["flags"].append((f, first_sentence(text[max(0, m.start() - 50):m.end() + 50])))
+    for m in SYMBOL_RE.finditer(text):
+        s = m.group(1)
+        if s in seen["symbols"] or len(refs["symbols"]) >= limit_symbols:
+            continue
+        seen["symbols"].add(s)
+        refs["symbols"].append((s, first_sentence(text[max(0, m.start() - 50):m.end() + 50])))
+    return refs
+
+
+def grep_present(slug, tokens):
+    if not tokens:
+        return set()
+    with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as fh:
+        fh.write("\n".join(sorted(tokens)) + "\n")
+        pattern_file = fh.name
+    try:
+        out = git(PRODUCTS / slug, "grep", "-o", "-F", "-f", pattern_file)
+        if out.returncode not in (0, 1):
+            return set()
+        return {line.split(":", 1)[1] for line in out.stdout.splitlines() if ":" in line}
+    finally:
+        try:
+            os.unlink(pattern_file)
+        except OSError:
+            pass
+
+
+def main():
+    issues = load_issues()
+
+    commits, tracked, deleted, basenames = {}, {}, {}, {}
+    for slug in REPO_SLUGS:
+        commits[slug] = repo_commit(slug)
+        tracked[slug] = tracked_paths(slug)
+        deleted[slug] = deleted_paths(slug)
+        index = collections.defaultdict(list)
+        for p in tracked[slug]:
+            index[Path(p).name].append(p)
+        basenames[slug] = index
+
+    missing = [s for s in REPO_SLUGS if commits[s] is None]
+    print("════════════════════════════════════════════════════════════════════")
+    print(" MODULE D — POSSIBLY OBSOLETE ISSUES")
+    print("════════════════════════════════════════════════════════════════════")
+    for slug in REPO_SLUGS:
+        print(f"  {slug}: commit {commits[slug]} — {len(tracked[slug])} tracked, "
+              f"{len(deleted[slug])} deleted-in-history")
+    if missing:
+        print(f"  ❌ missing vendored repos: {missing}; run ./sync-products.sh")
+        return 1
+
+    per_issue = []
+    all_flags = collections.defaultdict(set)
+    all_symbols = collections.defaultdict(set)
+    for issue in issues:
+        refs = extract_references(issue_text(issue))
+        if not any(refs.values()):
+            continue
+        per_issue.append((issue, refs))
+        for token, _ in refs["flags"]:
+            all_flags[issue["slug"]].add(token)
+        for token, _ in refs["symbols"]:
+            all_symbols[issue["slug"]].add(token)
+
+    present_flags = {slug: grep_present(slug, toks) for slug, toks in all_flags.items()}
+    present_symbols = {slug: grep_present(slug, toks) for slug, toks in all_symbols.items()}
+
+    strong, weak = [], []
+    for issue, refs in per_issue:
+        slug = issue["slug"]
+        a, b = [], []
+        for p, quote in refs["paths"]:
+            if p in tracked[slug]:
+                continue
+            if p in deleted[slug]:
+                a.append({"token": p, "quote": quote, "detail": "path was deleted in this repository's history"})
+            else:
+                alternates = [t for t in basenames[slug].get(Path(p).name, []) if t != p]
+                detail = "not in this checkout"
+                if alternates:
+                    detail += f" (same basename exists at `{alternates[0]}`)"
+                else:
+                    detail += " and no deletion record in this repository (likely another repo or the installed layout)"
+                b.append({"token": p, "quote": quote, "detail": detail})
+        for f, quote in refs["flags"]:
+            if f not in present_flags.get(slug, set()):
+                b.append({"token": f, "quote": quote, "detail": "flag string not present in this checkout"})
+        for s, quote in refs["symbols"]:
+            if s not in present_symbols.get(slug, set()):
+                b.append({"token": s, "quote": quote, "detail": "symbol not present in this checkout"})
+        if a:
+            strong.append({"issue": issue, "refs": a})
+        if b:
+            weak.append({"issue": issue, "refs": b})
+
+    strong_repo = collections.Counter(f["issue"]["slug"] for f in strong)
+    weak_repo = collections.Counter(f["issue"]["slug"] for f in weak)
+    strong_tokens = collections.Counter(r["token"] for f in strong for r in f["refs"])
+
+    print(f"\n  Class A — issues referencing a deleted path: {len(strong)}")
+    for slug, cnt in strong_repo.most_common():
+        print(f"    - {slug}: {cnt}")
+    print(f"  Class B — issues with an unresolved reference: {len(weak)}")
+    for slug, cnt in weak_repo.most_common():
+        print(f"    - {slug}: {cnt}")
+
+    lines = []
+    lines.append("> **Read-only module.** Flags issues that reference source paths, CLI flags or symbols that no longer exist in the repository's current checkout — i.e. **possible obsolete issues**.")
+    lines.append(">")
+    lines.append("> **Nothing is closed or relabelled.** Every entry is `veredicto_humano: pendiente`.")
+    lines.append(">")
+    lines.append("> Reproduce with `python3 modules/obsolete.py` (requires the vendored checkouts under `products/`, see `sync-products.sh`).")
+    lines.append("")
+    lines.append("## Summary")
+    lines.append("")
+    lines.append("Two evidence classes, deliberately kept apart so the strong signal is not diluted by the weak one:")
+    lines.append("")
+    lines.append("| Class | Meaning | Issues |")
+    lines.append("| --- | --- | --- |")
+    lines.append(f"| **A — deleted path** | The referenced path exists in this repository's git history as a deletion and is absent now. Verifiable obsolescence. | **{len(strong)}** |")
+    lines.append(f"| **B — unresolved reference** | A path, flag or symbol absent from this checkout with **no deletion record**. May belong to another repository, the installed package layout, or unlanded work. **Not** evidence of obsolescence. | {len(weak)} |")
+    lines.append("")
+    lines.append("### Checked against these commits")
+    lines.append("")
+    lines.append("| Repository | Commit | Tracked files | Deleted paths in history |")
+    lines.append("| --- | --- | --- | --- |")
+    for slug in REPO_SLUGS:
+        lines.append(f"| `{slug}` | `{commits[slug]}` | {len(tracked[slug])} | {len(deleted[slug])} |")
+    lines.append("")
+    lines.append("### Class A by repository")
+    lines.append("")
+    lines.append("| Repository | Issues |")
+    lines.append("| --- | --- |")
+    for slug, cnt in strong_repo.most_common():
+        lines.append(f"| `{slug}` | {cnt} |")
+    if not strong_repo:
+        lines.append("| — | 0 |")
+    lines.append("")
+    lines.append("### Most frequently referenced deleted paths")
+    lines.append("")
+    lines.append("| Deleted path | Issues referencing it |")
+    lines.append("| --- | --- |")
+    for token, cnt in strong_tokens.most_common(15):
+        lines.append(f"| `{token}` | {cnt} |")
+    if not strong_tokens:
+        lines.append("| — | 0 |")
+    lines.append("")
+    lines.append("## Class A — issues referencing a deleted path (up to 15 per repository)")
+    lines.append("")
+    lines.append("These are the actionable rows. Each cites the deleted path, the sentence, the repository and the commit. A maintainer must confirm the issue is indeed obsolete before closing anything.")
+    lines.append("")
+    for slug in REPO_SLUGS:
+        subset = [f for f in strong if f["issue"]["slug"] == slug]
+        subset.sort(key=lambda f: f["issue"]["number"])
+        lines.append(f"### `{slug}` — {len(subset)} issues (checked at `{commits[slug]}`)")
+        lines.append("")
+        if not subset:
+            lines.append("_None._")
+            lines.append("")
+            continue
+        for f in subset[:15]:
+            issue = f["issue"]
+            lines.append(f"- **{issue_ref(issue)}** — {issue_title(issue)[:110]}")
+            lines.append(f"  - Link: {issue_link(issue)}")
+            for r in f["refs"][:5]:
+                lines.append(f"  - `{r['token']}` — {r['detail']}")
+                lines.append(f"    - Evidence: \"{r['quote']}\"")
+            lines.append(f"  - **posible, requiere verificación** — veredicto_humano: pendiente")
+        lines.append("")
+    lines.append("## Class B — unresolved references (weak evidence, up to 8 per repository)")
+    lines.append("")
+    lines.append("**These are not obsolescence claims.** They are references this checkout does not contain; most belong to another repository or to the installed package layout. The section exists so the signal is visible without being mistaken for proof.")
+    lines.append("")
+    for slug in REPO_SLUGS:
+        subset = [f for f in weak if f["issue"]["slug"] == slug]
+        subset.sort(key=lambda f: f["issue"]["number"])
+        lines.append(f"### `{slug}` — {len(subset)} issues (checked at `{commits[slug]}`)")
+        lines.append("")
+        if not subset:
+            lines.append("_None._")
+            lines.append("")
+            continue
+        for f in subset[:8]:
+            issue = f["issue"]
+            tokens = ", ".join(f"`{r['token']}`" for r in f["refs"][:6])
+            lines.append(f"- **{issue_ref(issue)}** — {issue_title(issue)[:100]}")
+            lines.append(f"  - Link: {issue_link(issue)}")
+            lines.append(f"  - Unresolved: {tokens}")
+            lines.append(f"  - veredicto_humano: pendiente")
+        lines.append("")
+    lines.append("## Limits")
+    lines.append("")
+    lines.append("- **Class A is verifiable but still needs human judgment**: an issue can deliberately discuss code that was removed, or the removal may be unrelated to the issue's request.")
+    lines.append("- **Class B is not evidence of obsolescence.** It exists because the absence of a reference is worth seeing, not because it proves anything. A path in the installed package layout (`assets/...`) or another repository naturally does not appear in this checkout.")
+    lines.append("- The check runs against the vendored commit listed above, not the live default branch. Re-run `./sync-products.sh` then this module to refresh.")
+    lines.append("- Flags and symbols are matched as substrings anywhere in tracked source, so a token that survives only in tests or docs resolves and is not reported (under-reporting, by design).")
+    lines.append("- Only repo-relative paths under plausible source roots are checked; user paths, URLs and prose are ignored.")
+    lines.append("- The module never closes, relabels or comments on anything.")
+    lines.append("")
+
+    path = write_report("report-obsolete.md", "Module D — Possibly Obsolete Issues", "\n".join(lines))
+    print(f"\n  report written: {path.name}")
+    print("════════════════════════════════════════════════════════════════════")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
 ### `tools/run_reports.py`
 
 ```python
@@ -1089,8 +1434,9 @@ run_reports.py — Regenerates every module report from the frozen snapshot.
 
   python3 tools/run_reports.py
 
-Runs Module A (completeness), Module B (duplicates) and Module C (cross-repository
-references). Each module is read-only and writes one root Markdown report.
+Runs Module A (completeness), Module B (duplicates), Module C (cross-repository
+references) and Module D (possibly obsolete issues). Each module is read-only and
+writes one root Markdown report.
 """
 
 import subprocess
@@ -1102,6 +1448,7 @@ MODULES = [
     ("Module A — completeness", ROOT / "modules" / "completeness.py"),
     ("Module B — duplicates", ROOT / "modules" / "duplicates.py"),
     ("Module C — cross-repo links", ROOT / "modules" / "cross_repo.py"),
+    ("Module D — possibly obsolete", ROOT / "modules" / "obsolete.py"),
 ]
 
 
@@ -1126,9 +1473,93 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
+### `tools/determinism_check.py`
+
+```python
+#!/usr/bin/env python3
+"""
+determinism_check.py — Verifies that every module report is byte-identical across processes.
+
+Python randomizes string hashing per process (PYTHONHASHSEED), so any module that iterates
+a `set` of strings to build an ordered report can produce a different file each run. That
+would make the published reports unreproducible.
+
+This checker runs each module twice under different hash seeds and fails if a report changes.
+
+  python3 tools/determinism_check.py
+
+Exit code 0 = all reports byte-identical. Exit code 1 = a report is non-deterministic.
+"""
+
+import hashlib
+import os
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+MODULES = [
+    ("Module A — completeness", ROOT / "modules" / "completeness.py", ROOT / "report-completeness.md"),
+    ("Module B — duplicates", ROOT / "modules" / "duplicates.py", ROOT / "report-duplicates.md"),
+    ("Module C — cross-repo links", ROOT / "modules" / "cross_repo.py", ROOT / "report-cross-links.md"),
+    ("Module D — possibly obsolete", ROOT / "modules" / "obsolete.py", ROOT / "report-obsolete.md"),
+]
+
+SEEDS = ["1", "7"]
+
+
+def digest(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def run_once(module, report, seed):
+    env = dict(os.environ, PYTHONHASHSEED=seed)
+    result = subprocess.run([sys.executable, str(module)], capture_output=True, text=True, env=env)
+    if result.returncode != 0:
+        sys.stderr.write(result.stderr)
+        raise SystemExit(f"{module.name} failed with PYTHONHASHSEED={seed}")
+    return digest(report)
+
+
+def main():
+    print("════════════════════════════════════════════════════════════════════")
+    print(" REPORT DETERMINISM CHECK (two processes, two hash seeds)")
+    print("════════════════════════════════════════════════════════════════════")
+    failures = []
+    for name, module, report in MODULES:
+        if not module.exists():
+            print(f"  ❌ missing module: {module}")
+            failures.append(name)
+            continue
+        digests = {seed: run_once(module, report, seed) for seed in SEEDS}
+        unique = set(digests.values())
+        if len(unique) == 1:
+            print(f"  ✔ {name}: {list(unique)[0][:16]}…")
+        else:
+            print(f"  ❌ {name}: report differs across seeds")
+            for seed, d in digests.items():
+                print(f"       seed {seed}: {d[:16]}…")
+            failures.append(name)
+
+    print("────────────────────────────────────────────────────────────────────")
+    if failures:
+        print(f" NON-DETERMINISTIC REPORTS: {len(failures)} — {', '.join(failures)}")
+        print("════════════════════════════════════════════════════════════════════")
+        return 1
+    print(" ALL REPORTS BYTE-IDENTICAL ACROSS PROCESSES")
+    print("════════════════════════════════════════════════════════════════════")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
 ---
 
-## 5. Console Output of `python3 tools/run_reports.py`
+## 6. Console Output of `python3 tools/run_reports.py`
 
 ```text
 ── Module A — completeness ──
@@ -1183,19 +1614,42 @@ if __name__ == "__main__":
   report written: report-cross-links.md
 ════════════════════════════════════════════════════════════════════
 
+── Module D — possibly obsolete ──
+════════════════════════════════════════════════════════════════════
+ MODULE D — POSSIBLY OBSOLETE ISSUES
+════════════════════════════════════════════════════════════════════
+  gentle-ai: commit 9dfe17d8 — 1826 tracked, 1247 deleted-in-history
+  engram: commit 0f79d5e — 555 tracked, 276 deleted-in-history
+  gentle-shell: commit 7a27c1c0 — 733 tracked, 1734 deleted-in-history
+
+  Class A — issues referencing a deleted path: 54
+    - gentle-ai: 34
+    - gentle-shell: 20
+  Class B — issues with an unresolved reference: 155
+    - gentle-ai: 78
+    - gentle-shell: 70
+    - engram: 7
+
+  report written: report-obsolete.md
+════════════════════════════════════════════════════════════════════
+
 all module reports regenerated
 ```
 
 ---
 
-## 6. Honest Limits
+## 7. Honest Limits
 
-1. **None of the three modules has human-verified precision yet.** They are deterministic and reproducible, but their usefulness must be judged by a maintainer reading the reports.
+1. **None of the four modules has human-verified precision.** They are deterministic and reproducible; a maintainer must judge the reports.
 
-2. **Module A depends on the issue form being the ground truth.** If a repository changes its template, the parse follows the template in `products/`, which is a vendored checkout, not a live fetch.
+2. **Module A depends on the issue form being the ground truth.** It parses the vendored checkout, not a live fetch.
 
 3. **Module B under-reports prose-only duplicates.** Without stack traces or distinctive strings there is no deterministic evidence, so it stays silent rather than guess.
 
-4. **Module C does not populate `cross_refs`.** The structured field is maintainer-owned.
+4. **Module C does not populate `cross_refs`** and cannot tell a dependency from a comparison; it reports.
 
-5. **No module acts.** There is no write path to GitHub anywhere in the project; `tools/readonly_check.py` enforces it.
+5. **Module D Class B is not evidence of obsolescence** and is labelled as such.
+
+6. **Reports must stay byte-identical.** `tools/determinism_check.py` enforces it; a non-deterministic report would make every other reproducibility claim worthless.
+
+7. **No module acts.** There is no write path to GitHub anywhere in the project; `tools/readonly_check.py` enforces it.

@@ -17,7 +17,8 @@
 | Does the tool act on GitHub? | No. It is read-only; a checker fails if any mutating call appears | `python3 tools/readonly_check.py` |
 | Are the figures trustworthy? | Every figure is recomputed; none is hardcoded. Precision of the post-audit rules is **pending human validation** | `PROMISES.md` |
 | What is not done? | Module D (obsolete issues), shadow mode, labelling tool | `PROMISES.md` §4 |
-| Do the mechanical modules exist? | Yes: completeness (A), duplicates (B), cross-repo links (C). Read-only, no labels needed | `MODULES.md`, `python3 tools/run_reports.py` |
+| Do the mechanical modules exist? | Yes: completeness (A), duplicates (B), cross-repo links (C), possibly-obsolete (D). Read-only, no labels needed | `MODULES.md`, `python3 tools/run_reports.py` |
+| Are the reports reproducible? | Yes, byte-identical across processes | `python3 tools/determinism_check.py` |
 | Tests | `125/125` rule tests, `12/12` contract tests | this file §2 and §3 |
 
 > **Honesty note.** Coverage is a census, not a correctness measure. The crash vocabulary and the rule order were changed after the adversarial audit; **no precision improvement is claimed** until a maintainer labels a fresh sample.
@@ -1417,7 +1418,7 @@ Each decision, its alternatives and its consequences are recorded in `DECISIONS.
 3. **No autonomous GitHub mutation.** By design and by check (`tools/readonly_check.py`); no candidate has been labelled, commented or closed.
 4. **Candidate P0 unconfirmed.** The 14 candidates in `gold-p0-p1.md` have `veredicto_humano: pendiente`.
 5. **Cross-repo linking incomplete.** 345 issues mention another repository with no structured link; the linking module is not implemented.
-6. **Module D (possibly obsolete issues) not implemented.** Modules A, B and C are implemented; no module has human-verified precision yet.
+6. **Module D Class B is not obsolescence evidence.** Only Class A (a path deleted in the repository's own history) is; Class B is reported separately and labelled weaker. No module has human-verified precision yet.
 7. **Conventional-commit bias.** 41.5% coverage depends on the ecosystem using `feat:`/`docs:`/`bug:` prefixes; repositories without that discipline would rely more on the LLM pass.
 8. **Process rules unverified.** H3, H4, H6, H7 and H8 cannot be checked with this dataset.
 
@@ -1442,5 +1443,6 @@ Three read-only modules run over the frozen snapshot and write root reports. Non
 | A completeness | `report-completeness.md` | 313 of 1,043 form-filed issues miss a required content field |
 | B duplicates | `report-duplicates.md` | 108 candidate pairs, 7 with strong evidence |
 | C cross-repo links | `report-cross-links.md` | 48 explicit references, 15 resolving to an open issue |
+| D possibly obsolete | `report-obsolete.md` | 54 issues reference a path deleted in the repository's own history (Class A); 155 more have an unresolved reference with no deletion record (Class B, weaker) |
 
-Regenerate with `python3 tools/run_reports.py`. Module C reframes an `AUDIT.md` figure: the audit reported "345 issues mention another repo with no structured link"; the actionable subset is 33 issues with an explicit `repo#N` reference, of which 15 resolve. The rest are prose mentions, which are not links.
+Regenerate with `python3 tools/run_reports.py`; verify byte-identical output with `python3 tools/determinism_check.py`. Module C reframes an `AUDIT.md` figure: the audit reported "345 issues mention another repo with no structured link"; the actionable subset is 33 issues with an explicit `repo#N` reference, of which 15 resolve. The rest are prose mentions, which are not links. Module D keeps verifiable obsolescence (Class A) apart from a merely unresolved reference (Class B) so the weak signal does not dilute the strong one.

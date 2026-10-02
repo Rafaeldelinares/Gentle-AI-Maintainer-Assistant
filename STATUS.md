@@ -5,14 +5,26 @@
 
 ---
 
-## Current Status: Delivery 2 — Mechanical read-only modules (A, B, C)
+## Current Status: Delivery 3 — Module D and deterministic reports
 
 * **Delivery 1 commits:** `ad7b6b1` (engine corrections, promise contract, decision log), `fc34e85` (privacy redaction + checker).
-* **Delivery 2 content commits:** `b07b282` (modules A/B/C, reports, docs), `8081020` (tier naming consistency).
-* **This STATUS revision:** a documentation-only commit that follows `8081020`.
+* **Delivery 2 commits:** `b07b282` (modules A/B/C, reports, docs), `8081020` (tier naming consistency).
+* **Delivery 3 content commit:** `7638f09` (Module D, report determinism fix, `tools/determinism_check.py`).
+* **This STATUS revision:** a documentation-only commit that follows `7638f09`.
 * **Date:** 2026-10-02
-* **Tests:** `125/125` rule tests, `12/12` contract tests, read-only check green, privacy check green.
+* **Tests:** `125/125` rule tests, `12/12` contract tests, read-only green, privacy green, reports byte-identical across processes.
 * **Figures:** recomputed by `python3 tools/metrics.py` and `python3 tools/run_reports.py`; nothing hardcoded.
+
+---
+
+## Delivery 3 — Module D and a real determinism defect
+
+* **Module D — possibly obsolete issues** (`modules/obsolete.py` → `report-obsolete.md`), checked against the vendored commits `gentle-ai@9dfe17d8`, `engram@0f79d5e`, `gentle-shell@7a27c1c0`:
+  * **Class A (verifiable):** the referenced path was deleted in the repository's own history → **54 issues** (34 `gentle-ai`, 20 `gentle-shell`). Examples: references to `internal/components/sdd/inject.go`, `internal/assets/opencode/...`, `internal/components/communitytool/rtk_runtime.go`.
+  * **Class B (weak, explicitly not an obsolescence claim):** an unresolved path, flag or symbol with no deletion record → 155 issues. Most belong to another repository or to the installed package layout (e.g. `--claude-code`, `assets/agents/sdd-apply.md`).
+  * Every row cites the token, the sentence and the commit; all are "posible, requiere verificación" with `veredicto_humano: pendiente`.
+* **Defect found and fixed while validating:** Python randomizes string hashing per process, so iterating a `set` of tokens produced a different pair order in `report-duplicates.md` on every run. Ordering is now total (`-score, tier, pair keys`) and set iteration is sorted. `tools/determinism_check.py` runs each module under two `PYTHONHASHSEED` values and fails if a report changes — all four reports are byte-identical. Without this, every reproducibility claim in the project would have been hollow.
+* **Not validated:** no module has human-verified precision; Class A still needs maintainer judgment per issue.
 
 ---
 
@@ -94,12 +106,11 @@ Three read-only modules that need **no human labels** to be useful. Full method,
 
 ## What is missing (next, in planned order)
 
-1. **Module D — possibly obsolete issues** (plan item b, remaining): detect mentions of deleted files, functions or CLI flags; every suggestion must cite the source path and commit and be marked "posible, requiere verificación".
-2. **Labelling tool for Rafael** (plan item d): stratified sample of 100–150 issues including P0/P1, a template to label, and a script that computes false negatives of P0/P1 and precision per rule with its `n` from human labels only. This unblocks every "pending human validation" claim.
-3. **Shadow mode** (plan item c): compute suggested priority without showing or applying it.
-4. **`REPORT.md` for maintainers** (plan item e): max 15 items per section, every item `verificado_por_humano: no` until reviewed.
+1. **Labelling tool for Rafael** (plan item d): stratified sample of 100–150 issues including P0/P1, a template to label, and a script that computes false negatives of P0/P1 and precision per rule with its `n` from human labels only. This unblocks every "pending human validation" claim.
+2. **Shadow mode** (plan item c): compute suggested priority without showing or applying it.
+3. **`REPORT.md` for maintainers** (plan item e): max 15 items per section, every item `verificado_por_humano: no` until reviewed.
 
-Modules A, B and C are done and delivered. The planned order can be reordered only with a recorded decision in `DECISIONS.md`. Rationale for the current order: Module D completes the mechanical set with the same read-only guarantee; the labelling tool then converts "pending validation" into measured facts; shadow mode and the maintainer report come after, because they should be built on validated signals.
+Modules A, B, C and D are done and delivered. The planned order can be reordered only with a recorded decision in `DECISIONS.md`. Rationale: the labelling tool converts "pending validation" into measured facts; shadow mode and the maintainer report come after, because they should be built on validated signals.
 
 ---
 
