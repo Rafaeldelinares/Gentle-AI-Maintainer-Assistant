@@ -8,7 +8,8 @@
 ## Current Status: Delivery 1 — Post-audit corrections, promise contract and decision log
 
 * **Delivery commit:** `ad7b6b1` — `feat(triage): widen crash vocabulary, recover title_prefix, fix rule order, flag hard signals`
-* **This STATUS/EVALUATION revision:** a documentation-only commit that follows `ad7b6b1`.
+* **Privacy correction commit:** `fc34e85` — `fix(privacy): redact maintainer handle from snapshot, add privacy check`
+* **This STATUS/EVALUATION revision:** a documentation-only commit that follows `fc34e85`.
 * **Date:** 2026-10-02
 * **Tests:** `125/125` rule tests, `12/12` contract tests, read-only check green.
 * **Figures:** recomputed by `python3 tools/metrics.py`; nothing hardcoded.
@@ -36,6 +37,11 @@
 * **H9 now fires:** workaround detection widened; `bypass`/`mitigation` removed. 4 real demotions.
 * **New governance artifacts:** `PROMISES.md` (claim → evidence → status → gap), `DECISIONS.md` (12 decisions with alternatives), `tools/metrics.py` (recomputes every figure), `tools/readonly_check.py` (read-only invariant).
 * **Docs aligned:** `README.md`, `AGENTS.md`, `EVALUATION.md`, `OBSERVABILITY.md` all carry the recomputed figures and point to the promise contract.
+
+### Delivery 1.1 — Privacy correction
+* The snapshot was re-audited for personal data. One maintainer handle inside an issue body (`gentle-ai#3312`) was found and redacted to `@[maintainer]`.
+* The band/rule digest before and after the redaction is identical, so no rule depends on the handle.
+* `tools/privacy_check.py` now verifies: no `author`/`user`/`login`/`email` field, no forbidden maintainer handle, no non-placeholder email address.
 
 ---
 
