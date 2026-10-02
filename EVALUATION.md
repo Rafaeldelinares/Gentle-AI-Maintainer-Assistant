@@ -1301,7 +1301,9 @@ The schema enforces the governance invariant **bidirectionally**: `band == "cand
 
 ---
 
-## 5. Read-Only Invariant: `tools/readonly_check.py`
+## 5. Read-Only Invariant and Privacy Checks
+
+### `tools/readonly_check.py`
 
 ```text
 ════════════════════════════════════════════════════════════════════
@@ -1312,6 +1314,21 @@ The schema enforces the governance invariant **bidirectionally**: `band == "cand
   allowed: `gh issue list`, `gh pr list` (read-only) in ingestion scripts
 ════════════════════════════════════════════════════════════════════
 ```
+
+### `tools/privacy_check.py`
+
+```text
+════════════════════════════════════════════════════════════════════
+ PRIVACY CHECK (issues.json)
+════════════════════════════════════════════════════════════════════
+  issues loaded: 1228
+  ✔ no author/user fields
+  ✔ no forbidden maintainer handles (Alan-TheGentleman)
+  ✔ no non-placeholder email addresses
+════════════════════════════════════════════════════════════════════
+```
+
+One maintainer handle was found inside an issue body and redacted to `@[maintainer]`. The band/rule digest before and after the redaction is identical, proving no rule depends on the handle.
 
 ---
 

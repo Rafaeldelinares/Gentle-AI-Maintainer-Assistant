@@ -14,7 +14,7 @@ Last verified against commit `HEAD` (`git rev-parse --short HEAD`) by running ev
 | --- | --- | --- | --- | --- |
 | P-01 | "1,228 open issues across 3 core repositories" | `issues.json` (1,228 records); `python3 tools/metrics.py` prints `total open issues: 1228` and per-repo counts | **cumplida** | Snapshot is a point-in-time copy, not a live feed |
 | P-02 | "Only 178 of 1,228 (14.5%) carry an explicit `priority:*` label; 1,050 (85.5%) carry none; 686 (55.9%) under `status:needs-review`" | `python3 tools/metrics.py` (label census section) | **cumplida** | None |
-| P-03 | "Snapshot is sanitized: no personal data, logins or emails" | `issues.json` stores `slug`, `number`, `title`, `body`, `labels`, `cross_refs`, `system_id` only; no `author`/`user` field. `git grep -i "@"` on the snapshot finds no email addresses | **cumplida** | Reviewer can re-run the check with the command above |
+| P-03 | "Snapshot is sanitized: no personal data, logins or emails" | `python3 tools/privacy_check.py` → no `author`/`user`/`login`/`email` field, no forbidden maintainer handle, no non-placeholder email; `issues.json` stores only `slug`, `number`, `title`, `body`, `labels`, `cross_refs`, `system_id` | **cumplida** | One maintainer handle found in an issue body was redacted (see §6); example placeholders (`p@example.invalid`, `reproduction@example.com`) and a Go telemetry filename are allow-listed, not personal data |
 
 ## 2. Deterministic engine promises
 
@@ -38,7 +38,7 @@ Last verified against commit `HEAD` (`git rev-parse --short HEAD`) by running ev
 | P-21 | "The assistant never assigns final priority; the human decides" | `schemas/maintainer-decision.schema.json` requires a human `actor`; negative test 2 in `schemas/validate.py` rejects a decision without it; the engine's P0 output is a *candidate* label | **cumplida** | None |
 | P-22 | "A band is never emitted without a reason and a citation (H2)" | `AUDIT.md` §8: 483/483 bands (at audit time) had an evidence anchor, 0 violations; `db/rules.py` returns `(band, cross, rule_name)` and every rule has a matched span | **parcial** | The audit measured this over the corpus once; it is not yet an automated assertion in `test_rules.py` |
 | P-23 | "`veredicto_humano` is never filled by the tool" | `gold-p0-p1.md`: every entry says `veredicto_humano: pendiente`; no code writes that field | **cumplida** | None |
-| P-24 | "No maintainer names or person-level metrics" | `git grep` for maintainer logins and person-level percentages returns nothing in the project's own files | **parcial** | No automated check is committed; a `tools/privacy_check.py` is pending |
+| P-24 | "No maintainer names or person-level metrics" | `python3 tools/privacy_check.py` → no forbidden maintainer handle in the snapshot; no person-level metric exists in any project file | **cumplida** | The handle list in the checker is explicit and must be extended when a new handle is learned |
 | P-25 | "Nothing irreversible without asking: no data deletion, no history rewrite, no force-push" | `AGENTS.md` limits; no such command exists in project tooling (`tools/readonly_check.py` would flag `git push`) | **parcial** | Policy-level; not machine-enforced beyond the push check |
 
 ## 4. Quality & validation promises
@@ -63,6 +63,7 @@ Last verified against commit `HEAD` (`git rev-parse --short HEAD`) by running ev
 | `is_bug` blocks `feat:` with hard signals from reaching P0/P1 | **mitigated, not promoted** | `requires_human_review()`; `test_rules.py` §13; 26 issues flagged; band intentionally unchanged | **Pending human validation** |
 | H9 never fires on real data | **investigated + widened** | `RE_WORKAROUND_POSITIVE` widened; now 4 real demotions (`gentle-ai#4809`, `#3016`, `gentle-shell#745`, `#1052`); `test_rules.py` §7–8 | **Pending human validation** |
 | Cross-repo coverage: 345 issues mention another repo without a structured link | **pending** | `AUDIT.md` §10; `tools/metrics.py` cross-repo section | Not started |
+| Snapshot privacy: maintainer handle inside an issue body | **fixed** | `tools/privacy_check.py` → clean; the handle was redacted, reclassification verified identical before/after | **cumplida** |
 
 ---
 

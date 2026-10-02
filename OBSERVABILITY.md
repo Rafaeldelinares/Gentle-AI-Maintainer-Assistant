@@ -42,6 +42,9 @@
 * **tools/readonly_check.py (Verifies the Read-Only Invariant):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/tools/readonly_check.py
 
+* **tools/privacy_check.py (Verifies No Personal Data in the Snapshot):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/tools/privacy_check.py
+
 * **schemas/validate.py (Contract Test Runner — 12/12 passing):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/schemas/validate.py
 
@@ -86,4 +89,5 @@ python3 db/rules.py               # classification + calibration sample
 python3 test_rules.py             # rule suite (125/125)
 .venv/bin/python schemas/validate.py   # contracts (12/12), needs jsonschema
 python3 tools/readonly_check.py   # read-only invariant
+python3 tools/privacy_check.py    # no personal data in the snapshot
 ```
