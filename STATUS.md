@@ -12,6 +12,17 @@
 * **Date:** 2026-10-02
 * **Phase 1 Commit:** `854c38c` (`fase 1: fix regex boundaries, test suite, H9-H10 calibration, and reproducible snapshot`)
 * **Phase 1.1 Commit:** `322f9ea` (`fase 1.1: negation/deadlock safeguards, candidate P0 invariant, concrete-case tests`) — this STATUS record is a documentation-only follow-up commit.
+* **Phase 1.2 Audit Commit:** `50cde54` (`docs: adversarial design audit (H1-H10, bands P0-P3) over 1228 issues`)
+
+---
+
+## Read-Only Adversarial Audit (Phase 1.2)
+
+* **Artifact:** `AUDIT.md` — read-only adversarial audit of the H1–H10 rules and P0–P3 bands over the 1,228 issues.
+* **Anti-overfit split:** `sha256(slug#number) mod 5` → group 0 held-out (231), groups 1–4 exploration (997). Patterns authored on exploration only, then frozen and measured on held-out.
+* **Nothing was implemented:** `db/rules.py`, `schemas/`, and `docs/triage-model.md` were not modified. Corrections are listed only as proposals in `AUDIT.md` §11.
+* **Headline findings:** `is_bug` gate makes `feat:`-prefixed issues structurally unable to reach candidate P0/P1 (25 issues: 18 exploration / 7 held-out); 50 exploration / 9 held-out grey-area issues carry unnegated hard signals; crash vocabulary misses `crashes`, `uncaughtException`, `fails to start`, `out of memory`; 4 `docs:` issues go to P2 by rule order; 6 issues have an empty `title_prefix` despite a conventional token; H9 produces 0 demotions; 345 issues mention another repo with no structured cross-ref.
+* **H-rules:** H1/H2/H5 hold with 0 violations; H3, H4, H6, H7, H8 marked "not auditable with this dataset"; H9 and H10 detailed above.
 
 ---
 
