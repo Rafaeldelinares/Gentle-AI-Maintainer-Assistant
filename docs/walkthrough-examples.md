@@ -228,7 +228,7 @@ The LLM evaluates the 13 dimensions:
 
 ## 📌 Example 4: The Maintainer Dashboard Experience
 
-When maintainers (`Alan-TheGentleman`, `rafael`) review triaged issues, they see a concise Markdown/TUI view separating verifiable facts from inferences:
+When maintainers review triaged issues, they see a concise Markdown/TUI view separating verifiable facts from inferences:
 
 ```markdown
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -267,7 +267,7 @@ When the maintainer presses **`[A]` (Aceptar)**, an authoritative `maintainer-de
   "action": "accept",
   "decided_band": "P2",
   "decided_cross": "none",
-  "actor": "Alan-TheGentleman",
+  "actor": "lead-maintainer",
   "timestamp": "2026-10-02T10:15:00Z",
   "notes": "Verified workaround. Scheduled for next CLI minor release."
 }

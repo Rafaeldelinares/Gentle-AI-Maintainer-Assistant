@@ -1,67 +1,100 @@
 #!/usr/bin/env python3
 """
-rules.py — Deterministic triage rule engine for exp.db
+rules.py — Deterministic triage rule engine for the Gentle AI ecosystem
 
-Applies rule-based heuristics BEFORE invoking an LLM:
-  1. Features / enhancements -> P2
-  2. Docs / chores / questions -> P3
-  3. Silent data loss / corruption -> P0
-  4. Panic / SIGSEGV / hard crashes -> P1
-  5. Canonical cross-repository links (cross_refs) -> cross classification
+Applies code-based heuristics BEFORE invoking an LLM:
+  1. Features / enhancements -> P2 (rule:feature_request)
+  2. Docs / chores / questions -> P3 (rule:docs_chore_question)
+  3. Silent data loss / corruption -> P0 (rule:silent_data_loss)
+  4. Panic / SIGSEGV / hard crash without workaround -> P1 (rule:hard_crash)
+  5. Crash WITH documented workaround / retry -> P2 (rule:crash_with_workaround_demoted_to_p2)
+  6. Cross-repository links (cross_refs) -> cross classification
 
 Usage:
-  ./rules.py [--sample] [--all]
+  ./rules.py
 """
 
-import sqlite3
+import json
 import re
+import sqlite3
 import sys
 from pathlib import Path
 
 DB_PATH = Path(__file__).parent / "exp.db"
+SNAPSHOT_PATH = Path(__file__).parent.parent / "issues.json"
 
 # Compiled regex patterns for deterministic text classification
+# 1. P0: Silent data loss / corruption (non-capturing groups, bounded word characters)
 RE_P0_SILENT = re.compile(
-    r"\b(silent(ly)?\s+(corrupt|delet|drop|overwrit|los)|data\s+loss|silently\s+fails\s+to\s+save)\b",
+    r"(?:\bsilent(?:ly)?\s+(?:corrupt(?:s|ed|ing|ion)?|delet(?:es|ed|ing|ion)?|drop(?:s|ped|ping)?|overwrit(?:es|ing)?|overwrote|overwritten|los(?:es|t|ing)?|fail(?:s|ed|ing)?\s+to\s+save)\b|\bdata\s+loss\b)",
     re.IGNORECASE,
 )
+
+# Negation safeguards for P0 (e.g. 'prevents data loss', 'no data loss' must NOT trigger P0)
+RE_P0_NEGATION = re.compile(
+    r"\b(?:no|not|prevents?|preventing|avoid(?:s|ed|ing)?|without|protect(?:s|ed|ing)?\s+against|safeguard(?:s|ed|ing)?\s+against|zero)\s+(?:silent(?:ly)?\s+)?(?:data\s+loss|corruption|corrupting)\b",
+    re.IGNORECASE,
+)
+
+# 2. P1: Hard crashes (without overfitted specific lineage/loop terms)
 RE_P1_CRASH = re.compile(
-    r"\b(panic:|SIGSEGV|fatal error:\s*runtime|segmentation fault|NullPointerException|busy-loop.*frozen|dead-end.*lineage)\b",
+    r"(?:\bpanic:\s*|\bSIGSEGV\b|\bfatal error:\s*runtime\b|\bsegmentation fault\b|\bNullPointerException\b|\buncaught exception\b|\bdeadlock(?:ed)?\b|\bstack overflow\b)",
     re.IGNORECASE,
 )
+
+# 3. Workaround & retry recovery detection (Codifies Rule H9)
+RE_WORKAROUND_NEGATIVE = re.compile(
+    r"\b(?:no(?:ne)?|without(?:\s+any)?|unaware\s+of\s+any)\s+(?:known\s+)?workaround\b|\bworkaround:\s*(?:none|n/?a|no)\b",
+    re.IGNORECASE,
+)
+
+RE_WORKAROUND_POSITIVE = re.compile(
+    r"\b(?:workaround|work-around|temporary fix|temp fix|mitigation|bypass|recovers?(?:\s+upon|\s+on)?\s+retry|retry succeeds|restart fixes)\b",
+    re.IGNORECASE,
+)
+
 RE_P3_DOCS = re.compile(
     r"^(docs?|chore|typo|style|ci|refactor)(\(.*\))?:\s*",
     re.IGNORECASE,
 )
 
+
+def has_active_workaround(text: str) -> bool:
+    """Returns True if text specifies a workaround or retry recovery without stating none exists."""
+    if RE_WORKAROUND_NEGATIVE.search(text):
+        return False
+    return bool(RE_WORKAROUND_POSITIVE.search(text))
+
+
 def classify_issue_deterministically(row, labels, cross_refs):
     """
     Returns (band, cross, rule_name) or (None, cross, None) if indeterminate.
     """
-    title = row["title"] or ""
-    body = row["body"] or ""
-    prefix = (row["title_prefix"] or "").lower()
+    row_dict = dict(row) if hasattr(row, "keys") else (row or {})
+    title = row_dict.get("title") or ""
+    body = row_dict.get("body") or ""
+    prefix = (row_dict.get("title_prefix") or "").lower()
     full_text = f"{title}\n{body}"
 
-    # ── 1. CROSS-SYSTEM (from cross_refs table) ──
+    # ── 1. CROSS-SYSTEM (from cross_refs) ──
     cross = "none"
     if cross_refs:
-        # Check if cross_refs point to a different repository
-        foreign_refs = [cr for cr in cross_refs if cr["target_system_id"] != row["system_id"]]
+        foreign_refs = [cr for cr in cross_refs if cr.get("target_system_id") != row_dict.get("system_id")]
         if foreign_refs:
-            cross = "dependency"  # baseline deterministic cross link
+            cross = "dependency"
 
     # ── 2. BAND DETERMINISM ──
-
     label_set = {l.lower() for l in labels}
     is_bug = prefix in ("bug", "fix") or "type:bug" in label_set or "bug" in label_set
 
-    # Check P0: Silent data loss / corruption (only on actual bugs, not features proposing safeguards)
-    if is_bug and RE_P0_SILENT.search(full_text):
+    # Check P0: Silent data loss / corruption (only on bugs, excluding explicit negations)
+    if is_bug and RE_P0_SILENT.search(full_text) and not RE_P0_NEGATION.search(full_text):
         return "P0", cross, "rule:silent_data_loss"
 
-    # Check P1: Hard crash / fatal engine stall (only on actual bugs)
+    # Check P1 vs P2 (Rule H9 & H10): Hard crash / fatal engine stall
     if is_bug and RE_P1_CRASH.search(full_text):
+        if has_active_workaround(full_text):
+            return "P2", cross, "rule:crash_with_workaround_demoted_to_p2"
         return "P1", cross, "rule:hard_crash"
 
     # Check P2: Feature / enhancement request
@@ -84,52 +117,83 @@ def classify_issue_deterministically(row, labels, cross_refs):
     ):
         return "P3", cross, "rule:docs_chore_question"
 
-    # Indeterminate — must fall through to LLM
+    # Indeterminate — must fall through to LLM / human triage
     return None, cross, None
+
+
+def run_snapshot_evaluation(snapshot_data):
+    """Evaluates classification over a loaded JSON snapshot dynamically without hardcoded figures."""
+    total = len(snapshot_data)
+    rule_counts = {}
+    covered = 0
+
+    for item in snapshot_data:
+        band, cross, rule = classify_issue_deterministically(
+            item, item.get("labels", []), item.get("cross_refs", [])
+        )
+        if band is not None:
+            covered += 1
+            rule_counts[rule] = rule_counts.get(rule, 0) + 1
+
+    grey = total - covered
+    pct_covered = (100.0 * covered / total) if total > 0 else 0.0
+    pct_grey = (100.0 * grey / total) if total > 0 else 0.0
+
+    print("════════════════════════════════════════════════════════════════════")
+    print(f" DETERMINISTIC TRIAGE EVALUATION (from issues.json snapshot, {total} issues)")
+    print("════════════════════════════════════════════════════════════════════")
+    print(f"  Classified by code (without LLM): {covered} ({pct_covered:.1f}%)")
+    print(f"  Residual grey-area (requires LLM): {grey} ({pct_grey:.1f}%)\n")
+    print("  Breakdown by deterministic rule:")
+    for rule, cnt in sorted(rule_counts.items(), key=lambda x: x[1], reverse=True):
+        pct = (100.0 * cnt / total) if total > 0 else 0.0
+        print(f"    - {rule:38s}: {cnt:4d} issues ({pct:.1f}%)")
+    print("════════════════════════════════════════════════════════════════════")
+    return 0
 
 
 def run_demo():
     print("════════════════════════════════════════════════════════════════════")
-    print(" DEMO: CLASIFICACIÓN DETERMINISTA (db/exp.db no encontrado)")
+    print(" DEMO: DETERMINISTIC CLASSIFICATION (exp.db not found)")
     print("════════════════════════════════════════════════════════════════════")
-    print(" Nota: Para evaluar el censo completo de 1.228 issues reales, cargue")
-    print(" la base ejecutando './load.py' tras sincronizar './sync-products.sh'.\n")
-    print(" Ejecutando suite de prueba sintética sobre la función determinista:\n")
 
+    # If issues.json exists, evaluate dynamically
+    if SNAPSHOT_PATH.exists():
+        with open(SNAPSHOT_PATH, "r", encoding="utf-8") as f:
+            snapshot_data = json.load(f)
+        return run_snapshot_evaluation(snapshot_data)
+
+    print(" Notice: Full dataset snapshot not found. Running synthetic validation suite:\n")
     test_cases = [
         {
             "slug": "engram", "number": 101, "title": "docs: update memory architecture guide",
-            "body": "Fix typo in schema description", "title_prefix": "docs", "labels": ["documentation"], "xrefs": []
+            "body": "Fix typo in schema description", "title_prefix": "docs", "labels": ["documentation"], "cross_refs": []
         },
         {
             "slug": "gentle-ai", "number": 542, "title": "feat: add support for streaming responses",
-            "body": "Please add streaming support to review CLI", "title_prefix": "feat", "labels": ["enhancement"], "xrefs": []
+            "body": "Please add streaming support to review CLI", "title_prefix": "feat", "labels": ["enhancement"], "cross_refs": []
         },
         {
             "slug": "gentle-shell", "number": 88, "title": "fatal error: runtime panic: nil pointer dereference in session_view",
-            "body": "SIGSEGV when opening terminal with no config", "title_prefix": "bug", "labels": ["bug"], "xrefs": []
+            "body": "SIGSEGV when opening terminal with no config", "title_prefix": "bug", "labels": ["bug"], "cross_refs": []
         },
         {
-            "slug": "engram", "number": 19, "title": "save operation silently drops memories when disk is full",
-            "body": "Data loss: memory row is acknowledged but not persisted to SQLite", "title_prefix": "bug", "labels": ["bug"], "xrefs": []
+            "slug": "engram", "number": 19, "title": "save operation silently drops rows when disk is full",
+            "body": "Data loss: memory row is acknowledged but not persisted to SQLite", "title_prefix": "bug", "labels": ["bug"], "cross_refs": []
         },
         {
             "slug": "gentle-ai", "number": 712, "title": "review fails when path has trailing slash",
-            "body": "Workaround: remove trailing slash from path argument", "title_prefix": "bug", "labels": ["bug"], "xrefs": []
+            "body": "Workaround: remove trailing slash from path argument", "title_prefix": "bug", "labels": ["bug"], "cross_refs": []
         },
     ]
 
     for tc in test_cases:
         row = {"id": tc["number"], "system_id": 1, "slug": tc["slug"], "number": tc["number"], "title": tc["title"], "body": tc["body"], "title_prefix": tc["title_prefix"]}
-        band, cross, rule = classify_issue_deterministically(row, tc["labels"], tc["xrefs"])
-        status = f"──► [{band}] vía {rule}" if band else "──► [ZONA GRIS] Requiere LLM Pass 1"
+        band, cross, rule = classify_issue_deterministically(row, tc["labels"], tc["cross_refs"])
+        status = f"──► [{band}] via {rule}" if band else "──► [GREY AREA] Requires LLM Pass 1"
         print(f" • {tc['slug']}#{tc['number']}: \"{tc['title'][:55]}\"")
         print(f"   {status}\n")
 
-    print("════════════════════════════════════════════════════════════════════")
-    print(" En el censo real de 1.228 issues del ecosistema Gentleman-Programming:")
-    print(" • 39.0% (479 issues) se resuelven en 5 ms mediante este motor de código.")
-    print(" • 61.0% (749 issues) pasan a la inferencia LLM con la política calibrada H9.")
     print("════════════════════════════════════════════════════════════════════")
     return 0
 
@@ -154,7 +218,7 @@ def main():
     for r in cur.fetchall():
         xrefs_by_issue.setdefault(r["issue_id"], []).append(dict(r))
 
-    # Evaluate across all open issues (1,228)
+    # Evaluate across all open issues
     cur.execute("""
         SELECT i.id, i.system_id, s.slug, i.number, i.title, i.body, i.title_prefix
         FROM issues i
@@ -178,13 +242,13 @@ def main():
     covered_all = sum(1 for b, c, r in results_all.values() if b is not None)
 
     print("════════════════════════════════════════════════════════════════════")
-    print(f" 1. COBERTURA DETERMINISTA EN EL BACKLOG TOTAL ({total_all} issues abiertas)")
+    print(f" 1. DETERMINISTIC COVERAGE ACROSS BACKLOG ({total_all} open issues)")
     print("════════════════════════════════════════════════════════════════════")
-    print(f"  Total clasificadas por código (sin LLM): {covered_all} ({100.0 * covered_all / total_all:.1f}%)")
-    print(f"  Zona gris residual (requieren LLM):       {total_all - covered_all} ({100.0 * (total_all - covered_all) / total_all:.1f}%)\n")
-    print("  Desglose por regla determinista:")
+    print(f"  Classified by code (without LLM): {covered_all} ({100.0 * covered_all / total_all:.1f}%)")
+    print(f"  Residual grey-area (requires LLM): {total_all - covered_all} ({100.0 * (total_all - covered_all) / total_all:.1f}%)\n")
+    print("  Breakdown by deterministic rule:")
     for rule, cnt in sorted(rule_counts.items(), key=lambda x: x[1], reverse=True):
-        print(f"    - {rule:25s}: {cnt:4d} issues ({100.0 * cnt / total_all:.1f}%)")
+        print(f"    - {rule:38s}: {cnt:4d} issues ({100.0 * cnt / total_all:.1f}%)")
 
     # Evaluate against the 90-issue sample (Run #1) where we have Judge A and Judge B votes
     cur.execute("""
@@ -197,7 +261,6 @@ def main():
     """)
     sample_issues = cur.fetchall()
 
-    # Fetch attempt 2 votes for both judges
     cur.execute("""
         SELECT issue_id, judge_id, band, cross
         FROM votes
@@ -209,7 +272,7 @@ def main():
         votes_by_issue.setdefault(r["issue_id"], {})[judge_names[r["judge_id"]]] = r
 
     print("\n════════════════════════════════════════════════════════════════════")
-    print(" 2. VALIDACIÓN CONTRA LA MUESTRA DE 90 ISSUES (Intento 2)")
+    print(" 2. CALIBRATION SAMPLE EVALUATION (90 issues, Attempt 2)")
     print("════════════════════════════════════════════════════════════════════")
     sample_covered = 0
     match_a = 0
@@ -236,20 +299,21 @@ def main():
             if ok_a and ok_b: both_match += 1
             evaluated.append((row["slug"], row["number"], band, rule, va, vb))
 
-    print(f"  Muestra total:                         90 issues")
-    print(f"  Resueltas por regla determinista:      {sample_covered} ({100.0 * sample_covered / 90:.1f}%)")
-    print(f"  Zona gris que queda para el LLM:       {90 - sample_covered} ({100.0 * (90 - sample_covered) / 90:.1f}%)\n")
-    print(f"  Precisión de las reglas contra Judge A: {match_a}/{sample_covered} ({100.0 * match_a / sample_covered:.1f}%)")
-    print(f"  Precisión de las reglas contra Judge B: {match_b}/{sample_covered} ({100.0 * match_b / sample_covered:.1f}%)")
-    print(f"  Casos donde AMBOS jueces coincidieron con la regla: {both_match}/{sample_covered} ({100.0 * both_match / sample_covered:.1f}%)")
+    print(f"  Total sample:                              90 issues")
+    print(f"  Classified by deterministic rule:          {sample_covered} ({100.0 * sample_covered / 90:.1f}%)")
+    print(f"  Residual grey-area left for LLM:           {90 - sample_covered} ({100.0 * (90 - sample_covered) / 90:.1f}%)\n")
+    print(f"  Rule agreement with Judge A:               {match_a}/{sample_covered} ({100.0 * match_a / sample_covered:.1f}%)")
+    print(f"  Rule agreement with Judge B:               {match_b}/{sample_covered} ({100.0 * match_b / sample_covered:.1f}%)")
+    print(f"  Cases where BOTH judges agreed with rule:  {both_match}/{sample_covered} ({100.0 * both_match / sample_covered:.1f}%)")
 
-    print("\n  Ejemplos de clasificación determinista vs jueces:")
+    print("\n  Sample deterministic classification vs judges:")
     for slug, num, r_band, rule, va, vb in evaluated[:10]:
         status = "✔" if va == r_band and vb == r_band else "~"
-        print(f"    [{status}] {slug:12s} #{num:<4d} -> {r_band} ({rule:20s}) | Juez A: {va} | Juez B: {vb}")
+        print(f"    [{status}] {slug:12s} #{num:<4d} -> {r_band} ({rule:35s}) | Judge A: {va} | Judge B: {vb}")
 
     conn.close()
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

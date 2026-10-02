@@ -7,7 +7,7 @@
   "body": "When installing OpenCode with CodeGraph community tool selected, component:sdd validation fails. Workaround: manually configure mcp.servers in opencode.json as documented in docs/manual-setup.md.",
   "labels": ["type:bug", "status:needs-review"],
   "state": "open",
-  "author": "Alan-TheGentleman",
+  "author": "community-contributor",
   "created_at": "2026-03-28T14:22:00Z",
   "updated_at": "2026-03-29T09:10:00Z",
   "closed_at": null,

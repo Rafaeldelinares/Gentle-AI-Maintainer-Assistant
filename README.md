@@ -20,7 +20,7 @@
 
 Managing multi-repository agent ecosystems creates unique maintenance bottlenecks:
 * **The Backlog Scale:** 1,228 open issues across 3 core repositories (`gentle-ai`, `gentle-shell`, `engram`), with 76.5% completely untriaged.
-* **Maintainer Concentration:** High commit concentration around a single principal maintainer (`Alan-TheGentleman` accounts for ~47% of ecosystem commits, bus factor of 1 in `gentle-shell`).
+* **Ecosystem Scale & Influx:** Rapid open-source growth across three tightly coupled repositories (`gentle-ai`, `engram`, `gentle-shell`), generating an influx of issues where maintainers must triage hundreds of incoming tickets while developing new features.
 * **Cross-System Blindness:** Issues filed in one repository frequently stem from, depend on, or affect another repository without either maintainer having visibility.
 
 **Gentle AI Maintainer Assistant** acts as an **intelligent, explainable router (not a filter)** to protect maintainer cognitive load without losing track of a single issue. It never autonomously closes or decides issues; it provides structured, citations-backed recommendations for human review.
@@ -38,7 +38,7 @@ This proposal is backed by empirical research on the real 1,228 issue dataset:
   * Chores, docs, questions (`docs:` / `type:chore`) ──► **P3**.
   * Hard crashes (`panic:`, `SIGSEGV`) ──► **P1**.
   * Verified silent data loss / corruption ──► **P0**.
-* Tested against blind multi-judge runs: **97.1% accuracy** against Judge A and **88.6%** against Judge B.
+* Evaluated on calibration sample (n = 35 deterministic matches out of 90 sampled issues): **97.1% agreement** with Judge A (34/35) and **88.6%** with Judge B (31/35) on the initial ruleset (re-evaluated to 94.1% and 85.3% with calibrated boundary). Note: this sample was used during calibration and requires out-of-sample validation.
 
 ### 2. Calibrated P1 vs P2 Operational Policy (Rule H9)
 * In empirical dual-judge runs (MiniMax-M3 vs DeepSeek-V4-Flash), the primary divergence was the interpretation of *"broken in production"*:
@@ -47,7 +47,7 @@ This proposal is backed by empirical research on the real 1,228 issue dataset:
 * **Maintainer Axiom (Rule H9):** To prevent **alert fatigue** (which would otherwise produce 300+ urgent P1 issues), **P1 is strictly reserved for dead-ends with no viable escape hatch**. If an issue has a manual workaround, recovers upon retry, or is UX annoyance, it is classified as **P2**.
 
 ### 3. Asymmetric Escrow ("Hogar + Vista") for Misplaced Issues
-* Lexical keyword matching fails (6% precision) due to internal naming collisions (e.g. `gentle-shell` contains `extensions/gentle-ai.ts` and `.git/gentle-ai/`).
+* Lexical keyword matching fails (7.4% precision, 15/202) due to internal naming collisions (e.g. `gentle-shell` contains `extensions/gentle-ai.ts` and `.git/gentle-ai/`).
 * Misplaced issues remain owned by the repository where they were reported (*Hogar*), and only generate notifications for the target system (*Vista*) until a human maintainer explicitly claims and transfers them. Zero issues are lost or silently deleted.
 
 ---

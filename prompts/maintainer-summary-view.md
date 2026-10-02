@@ -1,6 +1,6 @@
 # Maintainer Summary View — Output Template
 
-This template formats triage inferences for presentation to human maintainers (`Alan-TheGentleman`, `rafael`).
+This template formats triage inferences for presentation to human maintainers.
 It enforces the architectural boundary: **Facts and Inferences must be visibly separated**, and every recommendation must expose its operational failure rationale.
 
 ---

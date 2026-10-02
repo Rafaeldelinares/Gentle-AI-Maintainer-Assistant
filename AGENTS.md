@@ -27,7 +27,7 @@ This document establishes the authoritative governance protocol and architectura
 
 ### Phase 1: Ecosystem Inspection & Backlog Census
 * **Census completed:** 1,228 open issues across `gentle-ai` (733), `gentle-shell` (424, formerly `gentle-pi`), and `engram` (71).
-* **Maintainer concentration:** `Alan-TheGentleman` accounts for ~47% of ecosystem commits, with a bus factor of 1 on `gentle-shell`.
+* **Triage bottleneck:** High issue-to-maintainer ratio across the three core repositories.
 * **Triage debt:** 76.5% of open issues are completely untriaged.
 * Documented in `docs/phase-1-ecosystem-inspection.md`.
 

@@ -16,7 +16,7 @@ Diseñados bajo la disciplina de arnés de **el Gentleman**:
 | **`system-triage-agent.md`** | **Master System Prompt** | Define la identidad, invariantes éticos, hechos del ecosistema, trampas de nombres (`gentle-shell` = `gentle-pi`), rúbrica calibrada y esquema JSON de salida. |
 | **`pass-1-issue-analysis.md`** | **Pass 1 (A-Priori Analysis)** | Evalúa un issue aislado que cayó en la zona gris (no resuelto por `db/rules.py`). Chequea las 13 dimensiones (forzando honestidad: severidad, repro y bloqueo quedan `unknown`). Aplica el árbol de decisión operativo. |
 | **`pass-2-cross-system-correlation.md`** | **Pass 2 (Cross-System)** | Evalúa correlaciones geográficas entre sistemas. Aplica los 4 patrones de implicación (a–d), verifica los bordes de acoplamiento de la arquitectura y genera recomendaciones de reubicación bajo custodia asimétrica ("Hogar + Vista"). |
-| **`maintainer-summary-view.md`** | **Maintainer UI / Markdown** | Plantilla de presentación para el maintainer humano (`Alan-TheGentleman`, `rafael`). Separa hechos e inferencias, resalta alertas de incertidumbre en el borde P1/P2 y ofrece botones/checkboxes de acción (`Accept`, `Override`, `Relocate`, `Defer`). |
+| **`maintainer-summary-view.md`** | **Maintainer UI / Markdown** | Plantilla de presentación para el maintainer humano. Separa hechos e inferencias, resalta alertas de incertidumbre en el borde P1/P2 y ofrece botones/checkboxes de acción (`Accept`, `Override`, `Relocate`, `Defer`). |
 
 ---
 
@@ -58,7 +58,7 @@ Diseñados bajo la disciplina de arnés de **el Gentleman**:
                          (maintainer-summary-view.md)
                                         │
                         ┌───────────────┴───────────────┐
-                        │ Decisión Humana (Alan/Rafael) │
+                        │ Decisión Humana (Maintainers) │
                         │ (schemas/maintainer-decision) │
                         └───────────────────────────────┘
 ```
