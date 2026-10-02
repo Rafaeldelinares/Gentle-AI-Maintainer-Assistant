@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gentle AI · Tablero de mantenimiento</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" title="Gentleman Programming">
+        <img id="brandLogo" alt="Gentleman Programming"
+             src="https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/docs/assets/brand/built-with-gentle-ai.png" />
+        <span class="logo-fallback" id="brandFallback" hidden>GP</span>
+      </span>
+      <strong>Gentle AI · Tablero de mantenimiento</strong>
+      <span class="tag">solo lectura sobre GitHub</span>
+    </div>
+    <div class="meta" id="meta">cargando…</div>
+    <div class="tools">
+      <input id="search" type="search" placeholder="Buscar por título o #número…" />
+      <label class="archive-toggle"><input type="checkbox" id="showArchive" /> archivados</label>
+      <button id="refresh" class="btn ghost" title="Recalcular señales desde el snapshot local. No descarga nada de GitHub.">Recalcular</button>
+      <button id="guide" class="btn ghost" title="Qué significa cada cosa de este tablero">¿Qué significa?</button>
+      <button id="determinism" class="btn ghost" title="Qué es determinista, qué no, y qué falta">Determinismo y límites</button>
+      <button id="simulate" class="btn ghost" title="Probar una frase contra el motor, sin tocar nada">Probar una regla</button>
+    </div>
+  </header>
+
+  <nav class="boards" id="boards"></nav>
+
+  <p class="notice" id="notice">
+    El motor <strong>sugiere</strong> columnas de bloqueo (falta información, revisión humana).
+    Mover una tarjeta y fijar el <em>veredicto humano</em> son decisiones humanas y quedan en un registro append-only.
+    Este tablero <strong>no escribe nada</strong> en GitHub: no etiqueta, no comenta, no cierra.
+    <button id="guide2" class="btn ghost" style="margin-left:8px;padding:2px 8px;font-size:12px">Guía de símbolos</button>
+  </p>
+
+  <div class="legend" id="legend">
+    <span class="tag-hint">Etiquetas: prendé y apagá. Lo que apagues <strong>desaparece del Kanban</strong>. El número entre paréntesis es cuántos issues llevan esa etiqueta.</span>
+    <span id="tagbar" class="tagbar"></span>
+    <span id="filterState" class="filter-state"></span>
+    <span class="miss-scale">
+      <span class="muted">severidad de <code>falta info</code>:</span>
+      <i class="s1"></i><i class="s2"></i><i class="s3"></i><i class="s4"></i>
+      <span class="muted">poco · medio · alto · crítico</span>
+    </span>
+  </div>
+
+  <main class="board" id="board"></main>
+
+  <aside class="drawer" id="drawer" hidden>
+    <div class="drawer-head">
+      <span id="drawer-ref"></span>
+      <a id="drawer-link" href="#" target="_blank" rel="noopener noreferrer">abrir en GitHub ↗</a>
+      <button id="drawer-close" class="btn ghost">cerrar</button>
+    </div>
+    <div class="drawer-body" id="drawer-body"></div>
+  </aside>
+
+  <section class="guide" id="simPanel" hidden>
+    <div class="guide-card">
+      <div class="guide-head">
+        <h2>Probar una regla (simulador)</h2>
+        <button id="simClose" class="btn ghost">cerrar</button>
+      </div>
+      <p><strong>Esto no edita ninguna regla y no toca ningún issue.</strong> Es un banco de pruebas:
+      pegás un título y un cuerpo, y ves <em>qué habría decidido el motor</em>, con qué regla y sobre
+      qué evidencia. Sirve para dos cosas: entender por qué un issue quedó donde quedó, y ver exactamente
+      qué texto dispara una regla antes de proponer un cambio.</p>
+
+      <div class="sim-form">
+        <label>Título <input id="simTitle" placeholder="bug(cli): se cae al arrancar" /></label>
+        <label>Cuerpo <textarea id="simBody" rows="4" placeholder="El proceso crashes con uncaughtException al iniciar…"></textarea></label>
+        <div class="sim-row">
+          <label>Prefijo (opcional) <input id="simPrefix" placeholder="bug" /></label>
+          <label>Etiquetas (separadas por coma) <input id="simLabels" placeholder="type:bug, enhancement" /></label>
+          <label>Repositorio
+            <select id="simSlug">
+              <option value="gentle-ai">gentle-ai</option>
+              <option value="engram">engram</option>
+              <option value="gentle-shell">gentle-shell</option>
+            </select>
+          </label>
+          <button id="simRun" class="btn">Probar</button>
+        </div>
+      </div>
+      <div id="simResult" class="sim-result"></div>
+
+      <h3>¿Y editar las reglas desde acá?</h3>
+      <p><strong>No, y es deliberado.</strong> Si las reglas se editaran desde el tablero y se guardaran
+      localmente, se romperían las dos propiedades que acabamos de verificar:</p>
+      <ul>
+        <li><strong>El determinismo:</strong> la misma snapshot dejaría de dar el mismo resultado, porque
+        dependería de lo que cada uno editó en su máquina.</li>
+        <li><strong>La auditabilidad:</strong> el revisor externo no puede leer una regla que vive en tu base
+        local. No podría verificar nada.</li>
+      </ul>
+      <p>Las reglas son <strong>código versionado</strong> en <code>db/rules.py</code>, con 125 tests que las
+      cubren. Cambiar una regla es un cambio de código: se escribe a mano, se agrega un test con un caso real
+      nombrado, se registra la decisión en <code>DECISIONS.md</code> y se commitea. Este simulador existe para
+      que ese cambio se pueda <em>diseñar</em> acá: pegás los casos que la regla actual matchea de más y ves
+      por qué.</p>
+      <p class="hint">Lo que sí falta y tiene sentido agregar: que el tablero registre <strong>propuestas de
+      regla</strong> a partir de los issues donde tu veredicto contradijo al motor. Eso no cambia ninguna
+      conducta; genera un reporte para que una persona decida. Está listado como pendiente.</p>
+    </div>
+  </section>
+
+  <section class="guide" id="detPanel" hidden>
+    <div class="guide-card">
+      <div class="guide-head">
+        <h2>Determinismo, límites y qué falta</h2>
+        <button id="detClose" class="btn ghost">cerrar</button>
+      </div>
+      <p>Este tablero tiene <strong>dos capas separadas a propósito</strong>. Una es determinista y se puede
+      comprobar; la otra <em>no debe serlo</em>, porque es donde decidís vos.</p>
+
+      <h3>1. Capa derivada — determinista y verificada</h3>
+      <p>Todo lo que el sistema <em>calcula</em>: banda, regla aplicada, columna sugerida, campos faltantes,
+      su severidad, y los contadores de cada etiqueta y columna.</p>
+      <p><strong>Mismo snapshot ⇒ mismo resultado, byte a byte, en cualquier proceso.</strong> No es una promesa:
+      se mide con dos procesos y dos semillas de hash distintas, y falla si cambia un solo carácter.</p>
+      <table>
+        <tr><th>Qué</th><th>Cómo se comprueba</th></tr>
+        <tr><td>Clasificación del motor</td><td><code>python3 test_rules.py</code> — 125 tests, y el digest es estable entre procesos</td></tr>
+        <tr><td>Reportes de módulos A–D</td><td><code>python3 tools/determinism_check.py</code> — byte-idénticos</td></tr>
+        <tr><td>Proyección del tablero</td><td>el mismo chequeo incluye la proyección derivada completa</td></tr>
+        <tr><td>Cifras publicadas</td><td><code>python3 tools/metrics.py</code> — se recalculan, no se leen de un archivo</td></tr>
+      </table>
+      <p class="kv">Snapshot en uso: <code id="detSnapshot">—</code></p>
+
+      <h3>2. Capa decidida — no determinista, a propósito</h3>
+      <p>La <strong>columna</strong> de cada tarjeta y el <strong>veredicto humano</strong> dependen de una persona.
+      Si fueran deterministas, no habría decisión humana: serían otra sugerencia del motor.</p>
+      <p>Lo que sí se garantiza es que ese estado sea <strong>auditable</strong>: cada movimiento y cada veredicto
+      se agrega a un registro append-only, y el estado se <strong>reconstruye</strong> desde ese registro.
+      Se comprueba con <code>python3 tools/board_rebuild_check.py</code>, que rompe las cachés, reconstruye y compara.</p>
+      <p class="kv">Decisiones humanas registradas en este tablero: <b id="detEvents">—</b>
+      (<span id="detBreakdown">—</span>)</p>
+
+      <h3>3. ¿El sistema aprende de tus movimientos? <span class="band p0">NO</span></h3>
+      <p>Acumula las decisiones, pero <strong>no las usa para cambiar ninguna regla, banda ni sugerencia</strong>.
+      Podés mover cien tarjetas y fijar cien veredictos: las 1.228 sugerencias quedan exactamente igual.</p>
+      <p><strong>Por qué, y esto es deliberado:</strong> si el motor aprendiera de los movimientos, la misma
+      snapshot dejaría de dar el mismo resultado, y el determinismo que acabás de ver en la sección 1 se rompería.
+      No habría forma de reproducir un tablero ni de auditar por qué sugirió lo que sugirió.</p>
+      <p><strong>Lo que sí hace hoy:</strong> guardar tus etiquetas humanas para poder <em>medir</em> después —
+      falsos negativos de P0/P1 y precisión por regla, con su <code>n</code>. Es el insumo de la medición,
+      no del aprendizaje automático.</p>
+      <p><strong>Cómo se cambiaría una regla, cuando toque:</strong> leyendo esas etiquetas, escribiendo el cambio
+      a mano, con su test y su decisión registrada en <code>DECISIONS.md</code>. Nunca en silencio y nunca sola.</p>
+      <p class="hint">Verificado en un experimento: 40 decisiones humanas aplicadas a 40 tarjetas →
+      <strong>1.228 de 1.228 sugerencias sin cambios</strong>.</p>
+
+      <h3>4. Lo que falta, según el propio sistema</h3>
+      <table>
+        <tr><th>Pendiente</th><th>Por qué importa</th></tr>
+        <tr><td><strong>Medición desde etiquetas humanas</strong></td><td>hoy se puede afirmar <em>cobertura</em> (cuántos issues toca cada regla), pero <strong>ninguna cifra de acierto</strong>. Falta el script que lea tus veredictos y calcule precisión por regla con su <code>n</code>.</td></tr>
+        <tr><td><strong>Señales de los módulos B, C y D por tarjeta</strong></td><td>duplicados, enlaces entre repos y obsolescencia existen como reportes en la raíz, pero todavía <strong>no se ven como insignia</strong> en cada tarjeta.</td></tr>
+        <tr><td><strong>Vista de sistema</strong></td><td>agregar por clase raíz en vez de por caso: "313 reportes con los mismos campos faltantes" es <em>un</em> problema de plantilla, no 313 tareas. Con límites de trabajo en curso y envejecimiento por columna.</td></tr>
+        <tr><td><strong>Zona gris sin pasada de LLM</strong></td><td>718 issues (58,5%) quedan sin clasificar por reglas. Es demasiado para leerlos a mano.</td></tr>
+        <tr><td><strong>Revisión nativa del tablero</strong></td><td>el ciclo de revisión de 4 lentes encontró 5 fallas críticas (todas corregidas) y quedó <strong>sin cerrar</strong> la validación. El candidato cambió después, así que hay que rehacerla.</td></tr>
+        <tr><td><strong>Nada commiteado todavía</strong></td><td>todo este trabajo vive en el árbol de trabajo. Hasta que se commitee, no es reproducible por un tercero.</td></tr>
+      </table>
+
+      <h3>5. Cómo comprobarlo vos</h3>
+      <pre class="cmd">python3 tools/verify_all.py --full   # todos los checks, incluido el determinismo
+python3 tools/determinism_check.py   # derivado byte-idéntico entre procesos
+python3 tools/board_rebuild_check.py # el estado se reconstruye desde el log</pre>
+      <p><strong>Lo que ninguna cifra de este tablero significa:</strong> cobertura no es acierto. Que una regla
+      toque 399 issues no dice que los clasifique bien. Eso, hoy, está <strong>pendiente de validación humana</strong>.</p>
+    </div>
+  </section>
+
+  <section class="guide" id="guidePanel" hidden>
+    <div class="guide-card">
+      <div class="guide-head">
+        <h2>Qué significa cada cosa</h2>
+        <button id="guideClose" class="btn ghost">cerrar</button>
+      </div>
+      <p>Este tablero no decide nada por vos: sugiere, y vos confirmás. Todo lo que ves acá se calcula
+      desde un snapshot congelado de los issues abiertos; no se descarga nada en vivo y no se escribe
+      nada en GitHub.</p>
+
+      <h3>Bandas de prioridad</h3>
+      <table>
+        <tr><th>Etiqueta</th><th>Qué significa</th></tr>
+        <tr><td class="band p0">candidato P0</td><td>El texto describe <strong>pérdida silenciosa de datos o corrupción</strong>. Acá nunca vas a ver un "P0" final: el motor emite un <em>candidato</em> y lo tiene que confirmar una persona. Se verifica contra <code>gold-p0-p1.md</code>.</td></tr>
+        <tr><td class="band p1">P1</td><td>Crash duro: <code>panic:</code>, <code>SIGSEGV</code>, no arranca, se queda sin memoria, desborde de pila… <strong>y no hay workaround ni recuperación al reintentar</strong>. Es un bloqueo sin salida.</td></tr>
+        <tr><td class="band p2">P2</td><td>Degrada funcionalidad, <strong>o</strong> existe un workaround manual, <strong>o</strong> se recupera al reintentar, <strong>o</strong> es un pedido de funcionalidad (<code>feat:</code>). La mayoría de la zona gris cae acá.</td></tr>
+        <tr><td class="band p3">P3</td><td>Documentación, pregunta, tarea de mantenimiento, cosmético.</td></tr>
+        <tr><td><strong>zona gris</strong></td><td>El motor <strong>no pudo</strong> clasificarlo con una regla determinista. No significa "sin importancia": significa <em>sin clasificar todavía</em>. Necesita el pase con LLM o tu criterio.</td></tr>
+      </table>
+
+      <h3>Las insignias de cada tarjeta</h3>
+      <table>
+        <tr><th>Insignia</th><th>Qué significa</th></tr>
+        <tr><td><code>falta info ×N/T</code></td><td>Al reporte le faltan <strong>N de los T campos que su propio formulario de GitHub marca como obligatorios</strong>. No es una opinión: sale de comparar el reporte contra <code>products/&lt;repo&gt;/.github/ISSUE_TEMPLATE/*.yml</code>. El color indica severidad según la proporción que falte: <span class="badge miss-low">poco</span> <span class="badge miss-medium">medio</span> <span class="badge miss-high">alto</span> <span class="badge miss-critical">crítico</span>. Pasando el mouse ves cuáles campos son.</td></tr>
+        <tr><td><code>⚠ mirada humana</code></td><td>Hay una <strong>señal dura</strong> (pérdida de datos o crash) pero el título tiene un prefijo que no es de bug (<code>feat:</code>, <code>docs:</code>). El motor <strong>no</strong> sube la banda en ese caso: solo te pide que lo mires. El prefijo es de quien reportó y no se pisa solo.</td></tr>
+        <tr><td><code>rule:...</code></td><td>La regla determinista que decidió la banda. <code>feature_request</code>, <code>docs_chore_question</code>, <code>hard_crash</code>, <code>candidato_p0_requiere_revision_humana</code>, <code>crash_with_workaround_demoted_to_p2</code>.</td></tr>
+        <tr><td><code>veredicto P2</code></td><td>Tu etiqueta humana, ya guardada. Esta es la que vale para medir precisión.</td></tr>
+        <tr><td><code>sugerido: …</code></td><td>El motor sugiere mover esta tarjeta. <strong>No la movió</strong>: espera tu confirmación.</td></tr>
+      </table>
+      <p class="guide-note"><strong>Ojo con cómo se lee.</strong> <code>falta info</code> no dice que el issue sea malo: dice que <strong>el reporte no trae lo que su propio formulario pide</strong>. Un issue con severidad crítica puede ser perfectamente válido — lo que falta es información para triarlo. Y al revés: un reporte completo puede estar igual de equivocado.</p>
+
+      <h3>Las etiquetas de arriba (prenden y apagan el Kanban)</h3>
+      <p>Cada etiqueta de la barra superior es un interruptor con el <strong>número de issues que la llevan entre paréntesis</strong>. Mientras está prendida, sus tarjetas se ven; cuando la apagás, <strong>desaparecen del tablero</strong> y los contadores de cada columna se recalculan. Así podés dejar a la vista sólo lo que te interesa ahora: por ejemplo, apagar <code>zona gris</code> y <code>P2</code> para trabajar únicamente sobre lo urgente y lo bloqueado.</p>
+      <p>El conteo de cada etiqueta es del tablero activo y no cambia al filtrar: es el total de esa aplicación. Las etiquetas no se pisan con tus decisiones: filtrar no mueve ninguna tarjeta ni borra nada.</p>
+
+      <h3>Las columnas</h3>
+      <table>
+        <tr><th>Columna</th><th>Para qué</th></tr>
+        <tr><td>Entrada</td><td>Todo issue abierto cae acá al analizarse. Es la bandeja: todavía nadie lo miró.</td></tr>
+        <tr><td>Falta información</td><td>El reporte no trae lo que su formulario pide. Acá no hay nada que decidir: hay que pedir datos.</td></tr>
+        <tr><td>Revisión humana</td><td>Hay algo que requiere ojo humano: candidato P0, o señal dura bajo un prefijo que no es de bug.</td></tr>
+        <tr><td>Listo para el mantenedor</td><td>Vos lo triaste y confirmaste. Solo lo llena una persona.</td></tr>
+        <tr><td>En manos del mantenedor</td><td>Alguien se hizo cargo. Lo marcás vos.</td></tr>
+        <tr><td>Archivado</td><td>Descartado o duplicado confirmado. No se borra: se guarda y se ve con el interruptor "archivados".</td></tr>
+      </table>
+      <p><strong>El motor solo puede sugerir columnas de bloqueo</strong> (Falta información y Revisión humana).
+      Nunca sugiere "Listo" ni "En manos": promover trabajo hacia un mantenedor es un juicio humano.</p>
+
+      <h3>La barra lateral (al hacer clic en una tarjeta)</h3>
+      <ol>
+        <li><strong>Título y estado:</strong> banda sugerida, regla aplicada, si tiene mirada humana pendiente, la columna sugerida y en qué columna está hoy (con la fecha del último movimiento).</li>
+        <li><strong>Campos que faltan:</strong> la lista concreta de lo que el formulario pide y el reporte no trae.</li>
+        <li><strong>Veredicto humano:</strong> seis botones (P0, P1, P2, P3, no válida). Elegís uno y queda guardado al instante en el registro. <em>Esto lo escribís vos: la herramienta nunca lo completa por su cuenta.</em></li>
+        <li><strong>Nota:</strong> una línea libre para dejar por qué decidiste algo. Se guarda junto al veredicto.</li>
+        <li><strong>Registro (append-only):</strong> la lista de todo lo que pasó con esa tarjeta — cada movimiento y cada veredicto, con fecha y autor. Nada se reescribe nunca; si algo se equivocó, se agrega un evento nuevo.</li>
+        <li><strong>abrir en GitHub ↗:</strong> te lleva al issue real, para leer el hilo completo. La herramienta no lo abre por vos.</li>
+      </ol>
+
+      <h3>La barra de arriba</h3>
+      <ul>
+        <li><strong>Pestañas</strong> (<code>engram</code>, <code>gentle-ai</code>, <code>gentle-shell</code>): un tablero por aplicación. <strong>Nunca se mezclan</strong>; no hay vista conjunta a propósito.</li>
+        <li><strong>Snapshot:</strong> el hash y la fecha del corte de datos con el que estás trabajando. Si es viejo, es viejo: se ve.</li>
+        <li><strong>Buscar:</strong> filtra por título o <code>#número</code> dentro del tablero activo.</li>
+        <li><strong>archivados:</strong> muestra u oculta la columna de descartados.</li>
+        <li><strong>Recalcular:</strong> vuelve a correr las señales deterministas sobre el snapshot local. <strong>No descarga nada de GitHub</strong> y no toca tus decisiones.</li>
+      </ul>
+
+      <h3>Lo que este tablero no hace</h3>
+      <p>No etiqueta, no comenta, no cierra y no transfiere nada en GitHub. No contacta maintainers.
+      No rellena el veredicto humano. No guarda nombres de personas. No esconde issues: si uno se cierra
+      allá, la tarjeta se archiva, no desaparece.</p>
+    </div>
+  </section>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
