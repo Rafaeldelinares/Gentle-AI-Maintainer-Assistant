@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # Only the project's own executable code. `products/` holds third-party checkouts and
 # markdown docs describe procedures rather than execute them.
-SCAN_DIRS = ["db", "schemas", "tools", "modules"]
+SCAN_DIRS = ["db", "schemas", "tools", "modules", "board"]
 SCAN_FILES = ["test_rules.py"]
 CODE_SUFFIXES = (".py", ".sh", ".bash", ".sql")
 SELF = Path(__file__).resolve()
@@ -34,6 +34,9 @@ MUTATION_PATTERNS = [
     (re.compile(r"\burlopen\s*\([^)]*data\s*="), "HTTP write via urlopen"),
     (re.compile(r"\bcurl\b[^\n]*\s(-X|--request)\s*(POST|PATCH|PUT|DELETE)", re.IGNORECASE), "HTTP write via curl"),
     (re.compile(r"\bgit\s+push\b"), "git push"),
+    # The board must never talk outbound; it is a local projection plus a local log.
+    (re.compile(r"\bhttp\.client\b|\burllib\.request\b|\brequests\.(get|post|put|patch|delete)\b"), "outbound HTTP client"),
+    (re.compile(r"\bsocket\.create_connection\b"), "raw outbound socket"),
 ]
 
 # Documented exceptions: lines that describe the prohibition rather than perform it.

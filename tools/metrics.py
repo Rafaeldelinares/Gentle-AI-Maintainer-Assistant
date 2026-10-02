@@ -118,6 +118,23 @@ def main():
     if mentions:
         print(f"  lexical keyword precision:                  {pct(len(confirmed), len(mentions)):.1f}% ({len(confirmed)}/{len(mentions)})")
 
+    # ── board: derived distribution per application (what the engine would suggest) ──
+    try:
+        sys.path.insert(0, str(ROOT / "board"))
+        import core as board_core  # noqa: E402
+        per_slug = collections.defaultdict(collections.Counter)
+        for issue in issues:
+            card = board_core.derive_card(issue)
+            suggested = card["suggested_column"] or "entrada"
+            per_slug[card["slug"]][suggested] += 1
+        print("\n  board: derived column distribution per application (before any human move)")
+        for slug in sorted(per_slug):
+            total_cards = sum(per_slug[slug].values())
+            detail = ", ".join(f"{col}={per_slug[slug].get(col, 0)}" for col in board_core.COLUMNS)
+            print(f"    - {slug:14s} total={total_cards:4d} | {detail}")
+    except Exception as exc:  # pragma: no cover
+        print(f"\n  board: derived distribution unavailable ({exc})")
+
     # ── calibration sample from exp.db (optional) ──
     db = ROOT / "db" / "exp.db"
     if db.exists():

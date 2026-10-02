@@ -1,6 +1,17 @@
 #!/usr/bin/env python3
 """
-determinism_check.py — Verifies that every module report is byte-identical across processes.
+determinism_check.py — Verifies that everything *derived* is byte-identical across processes.
+
+Covers two things that must be reproducible:
+  1. the four module reports (files on disk);
+  2. the board's derived projection (bands, rules, suggested columns, missing-info severity,
+     tag counts and column counts), computed by ingesting the snapshot into a temporary
+     database.
+
+What is deliberately NOT checked here: the human decisions (card column, verdict). Those
+must not be deterministic; what is verified about them is that they are reconstructible
+from the append-only log, and that is tools/board_rebuild_check.py.
+
 
 Python randomizes string hashing per process (PYTHONHASHSEED), so any module that iterates
 a `set` of strings to build an ordered report can produce a different file each run. That
@@ -31,6 +42,31 @@ MODULES = [
 
 SEEDS = ["1", "7"]
 
+BOARD_PROJECTION_SNIPPET = """
+import hashlib, json, sys, tempfile
+from pathlib import Path
+sys.path.insert(0, str(Path(%r) / "board"))
+import core
+tmp = Path(tempfile.mkdtemp()) / "board-determinism.db"
+conn = core.connect(tmp)
+core.init_schema(conn)
+with open(Path(%r) / "issues.json", encoding="utf-8") as fh:
+    core.ingest(conn, json.load(fh))
+core.rebuild_state(conn)
+h = hashlib.sha256()
+for row in conn.execute(
+        "SELECT ref, band, rule, suggested_column, required_total, missing_severity, review_flag "
+        "FROM cards ORDER BY ref"):
+    h.update(("|".join(str(v) for v in row)).encode())
+for slug in ("engram", "gentle-ai", "gentle-shell"):
+    for tag in core.board_tags(conn, slug):
+        h.update(f"{slug}:tag:{tag['key']}={tag['count']}".encode())
+    for key, value in sorted(core.column_counts(conn, slug).items()):
+        h.update(f"{slug}:col:{key}={value}".encode())
+conn.close()
+sys.stdout.write(h.hexdigest())
+"""
+
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -45,9 +81,20 @@ def run_once(module, report, seed):
     return digest(report)
 
 
+def board_projection_digest(seed):
+    """Digest of everything the board derives from the snapshot (no human decisions)."""
+    env = dict(os.environ, PYTHONHASHSEED=seed)
+    code = BOARD_PROJECTION_SNIPPET % (str(ROOT), str(ROOT))
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
+    if result.returncode != 0:
+        sys.stderr.write(result.stderr)
+        raise SystemExit(f"board projection failed with PYTHONHASHSEED={seed}")
+    return result.stdout.strip()
+
+
 def main():
     print("════════════════════════════════════════════════════════════════════")
-    print(" REPORT DETERMINISM CHECK (two processes, two hash seeds)")
+    print(" DERIVED-OUTPUT DETERMINISM CHECK (two processes, two hash seeds)")
     print("════════════════════════════════════════════════════════════════════")
     failures = []
     for name, module, report in MODULES:
@@ -65,12 +112,22 @@ def main():
                 print(f"       seed {seed}: {d[:16]}…")
             failures.append(name)
 
+    # The board's derived projection: bands, rules, suggested columns, severity, tag counts.
+    board_digests = {seed: board_projection_digest(seed) for seed in SEEDS}
+    if len(set(board_digests.values())) == 1:
+        print(f"  ✔ board derived projection: {list(board_digests.values())[0][:16]}…")
+    else:
+        print("  ❌ board derived projection differs across seeds")
+        for seed, digest in board_digests.items():
+            print(f"       seed {seed}: {digest[:16]}…")
+        failures.append("board derived projection")
+
     print("────────────────────────────────────────────────────────────────────")
     if failures:
         print(f" NON-DETERMINISTIC REPORTS: {len(failures)} — {', '.join(failures)}")
         print("════════════════════════════════════════════════════════════════════")
         return 1
-    print(" ALL REPORTS BYTE-IDENTICAL ACROSS PROCESSES")
+    print(" ALL DERIVED OUTPUT IS BYTE-IDENTICAL ACROSS PROCESSES")
     print("════════════════════════════════════════════════════════════════════")
     return 0
 
