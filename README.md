@@ -4,6 +4,16 @@
 >
 > **Status:** Proposal & Design Phase (Phases 1–7 completed and empirically validated).
 
+<div align="center">
+
+<a href="https://github.com/Gentleman-Programming/gentle-ai#built-with-gentle-ai">
+  <img width="220" src="https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/docs/assets/brand/built-with-gentle-ai.png" alt="Built with Gentle-AI" />
+</a>
+
+<p><sub>Built with <strong><a href="https://github.com/Gentleman-Programming/gentle-ai#built-with-gentle-ai">Gentle-AI</a></strong> — Memory, Workflows & Evidence.</sub></p>
+
+</div>
+
 ---
 
 ## 🎯 Executive Summary & Purpose
