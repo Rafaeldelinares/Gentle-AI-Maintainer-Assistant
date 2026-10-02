@@ -38,7 +38,7 @@ def load_json(p: Path):
 
 def main():
     print("════════════════════════════════════════════════════════════════════")
-    print(" VALIDANDO ESQUEMAS Y FIXTURES (Draft 2020-12)")
+    print(" VALIDATING SCHEMAS & FIXTURES (Draft 2020-12)")
     print("════════════════════════════════════════════════════════════════════\n")
 
     # Load all schemas first to build a Registry for $ref resolution
@@ -70,7 +70,7 @@ def main():
         schema_data = schemas[schema_file]
         validator_cls = validator_for(schema_data)
         validator_cls.check_schema(schema_data)
-        print(f"✔ Schema sintaxis OK: {schema_file}")
+        print(f"✔ Schema syntax OK: {schema_file}")
 
         if registry:
             validator = validator_cls(schema_data, registry=registry)
@@ -86,15 +86,15 @@ def main():
             fix_data = load_json(fix_path)
             try:
                 validator.validate(fix_data)
-                print(f"    ✔ Fixture válida: {fix_file}")
+                print(f"    ✔ Valid fixture: {fix_file}")
                 passed_count += 1
             except jsonschema.ValidationError as e:
-                print(f"    ❌ Error validando {fix_file}: {e.message}", file=sys.stderr)
+                print(f"    ❌ Error validating {fix_file}: {e.message}", file=sys.stderr)
                 return 1
 
     # 2. NEGATIVE TESTS (Intentional violations must fail closed)
     print("\n════════════════════════════════════════════════════════════════════")
-    print(" NEGATIVE TESTS (Verificando fail-closed)")
+    print(" NEGATIVE TESTS (Verifying fail-closed behavior)")
     print("════════════════════════════════════════════════════════════════════\n")
 
     # Neg 1: deterministic_rule missing rule_name
@@ -104,10 +104,10 @@ def main():
     try:
         validator = validator_for(schemas["triage-inference.schema.json"])(schemas["triage-inference.schema.json"])
         validator.validate(bad_inference)
-        print("❌ Negative test falló: deterministic_rule sin rule_name fue aceptado", file=sys.stderr)
+        print("❌ Negative test failed: deterministic_rule without rule_name was accepted", file=sys.stderr)
         return 1
     except jsonschema.ValidationError:
-        print("✔ Neg test 1 OK: deterministic_rule sin rule_name es rechazado correctamente")
+        print("✔ Neg test 1 OK: deterministic_rule without rule_name is rejected as expected")
         passed_count += 1
 
     # Neg 2: maintainer_decision missing actor
@@ -117,10 +117,10 @@ def main():
     try:
         validator = validator_for(schemas["maintainer-decision.schema.json"])(schemas["maintainer-decision.schema.json"])
         validator.validate(bad_decision)
-        print("❌ Negative test falló: maintainer decision sin actor humano fue aceptada", file=sys.stderr)
+        print("❌ Negative test failed: maintainer decision without human actor was accepted", file=sys.stderr)
         return 1
     except jsonschema.ValidationError:
-        print("✔ Neg test 2 OK: decisión sin actor humano es rechazada correctamente")
+        print("✔ Neg test 2 OK: decision without human actor is rejected as expected")
         passed_count += 1
 
     # Neg 3: invalid band "P4"
@@ -130,14 +130,14 @@ def main():
     try:
         validator = validator_for(schemas["triage-inference.schema.json"])(schemas["triage-inference.schema.json"])
         validator.validate(bad_band)
-        print("❌ Negative test falló: banda inválida P4 fue aceptada", file=sys.stderr)
+        print("❌ Negative test failed: invalid band P4 was accepted", file=sys.stderr)
         return 1
     except jsonschema.ValidationError:
-        print("✔ Neg test 3 OK: banda inventada P4 es rechazada correctamente")
+        print("✔ Neg test 3 OK: invented band P4 is rejected as expected")
         passed_count += 1
 
     print("\n────────────────────────────────────────────────────────────────────")
-    print(f" RESULTADO FINAL: {passed_count}/{total_count} pruebas pasaron exitosamente.")
+    print(f" FINAL RESULT: {passed_count}/{total_count} tests passed successfully.")
     print("════════════════════════════════════════════════════════════════════")
     return 0
 

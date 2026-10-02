@@ -42,8 +42,8 @@ This proposal is backed by empirical research on the real 1,228 issue dataset:
 
 ### 2. Calibrated P1 vs P2 Operational Policy (Rule H9)
 * In empirical dual-judge runs (MiniMax-M3 vs DeepSeek-V4-Flash), the primary divergence was the interpretation of *"broken in production"*:
-  * Juez A marked any initial failure as P1.
-  * Juez B demoted to P2 if a documented manual workaround or retry existed.
+  * Judge A marked any initial failure as P1.
+  * Judge B demoted to P2 if a documented manual workaround or retry existed.
 * **Maintainer Axiom (Rule H9):** To prevent **alert fatigue** (which would otherwise produce 300+ urgent P1 issues), **P1 is strictly reserved for dead-ends with no viable escape hatch**. If an issue has a manual workaround, recovers upon retry, or is UX annoyance, it is classified as **P2**.
 
 ### 3. Asymmetric Escrow ("Hogar + Vista") for Misplaced Issues
@@ -110,7 +110,7 @@ python3 -m venv .venv
 .venv/bin/pip install jsonschema
 .venv/bin/python schemas/validate.py
 ```
-*Expected result:* `RESULTADO FINAL: 9/9 pruebas pasaron exitosamente.`
+*Expected result:* `FINAL RESULT: 9/9 tests passed successfully.`
 
 ### 2. Inspect the Deterministic Rules Engine
 See how pure code classifies 39% of issues without calling an LLM:
@@ -127,31 +127,17 @@ python3 db/rules.py
 
 ---
 
-## 🔗 Direct Links for Reviewers & AI Assistants
+## 🔍 Archivos para revisión / Files for Review
 
-If you or your AI agent need direct, absolute links to inspect the core files:
+Direct GitHub blob URLs for external auditors and automated web fetchers:
 
-* **End-to-End Walkthrough & Examples (`walkthrough-examples.md`):**
-  * GitHub UI: https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/docs/walkthrough-examples.md
-  * Raw Markdown: https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/docs/walkthrough-examples.md
-* **Deterministic Rules Engine (`rules.py`):**
-  * GitHub UI: https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/db/rules.py
-  * Raw Code: https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/db/rules.py
-* **Calibrated Triage Model (`triage-model.md`):**
-  * GitHub UI: https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/docs/triage-model.md
-  * Raw Markdown: https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/docs/triage-model.md
-* **Two-Pass Architecture (`architecture.md`):**
-  * GitHub UI: https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/docs/architecture.md
-  * Raw Markdown: https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/docs/architecture.md
-* **Human Authority & Decision Model (`decision-model.md`):**
-  * GitHub UI: https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/docs/decision-model.md
-  * Raw Markdown: https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/docs/decision-model.md
-* **Master System Prompt (`system-triage-agent.md`):**
-  * GitHub UI: https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/prompts/system-triage-agent.md
-  * Raw Markdown: https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/prompts/system-triage-agent.md
-* **Triage Inference Schema (`triage-inference.schema.json`):**
-  * GitHub UI: https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/schemas/triage-inference.schema.json
-  * Raw JSON: https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/schemas/triage-inference.schema.json
+* **[EVALUATION.md](https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/EVALUATION.md)** — Comprehensive self-contained audit guide: complete source code of `rules.py`, literal rules H1–H10, 13 dimensions, 20 sample issues from SQLite, and metrics methodology.
+* **[db/rules.py](https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/db/rules.py)** — Deterministic triage rule engine (Python).
+* **[docs/triage-model.md](https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/docs/triage-model.md)** — Calibrated triage model, bands P0–P3, 13 dimensions, and rules H1–H10.
+* **[docs/decision-model.md](https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/docs/decision-model.md)** — Human maintainer decision authority, auditability, and Asymmetric Escrow ("Hogar + Vista").
+* **[prompts/system-triage-agent.md](https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/prompts/system-triage-agent.md)** — Master System Prompt for triage inference agents.
+* **[schemas/validate.py](https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/schemas/validate.py)** — Automated test runner for JSON Schema Draft 2020-12 data contracts.
+* **[docs/walkthrough-examples.md](https://github.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/blob/master/docs/walkthrough-examples.md)** — End-to-end walkthrough with 4 concrete operational examples.
 
 ---
 
@@ -446,3 +432,9 @@ We actively invite feedback from other maintainers and contributors:
 3. **Delivery Mechanism:** Should the assistant ship as a standalone CLI tool, a Pi/Gentle-AI skill bundle, or both?
 
 Feel free to open an issue or start a discussion to share your perspective!
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
