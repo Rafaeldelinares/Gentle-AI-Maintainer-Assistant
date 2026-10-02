@@ -1,0 +1,25 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: gama-issues-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gama
+      POSTGRES_USER: gama
+      POSTGRES_PASSWORD: gama
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "55432:5432"
+    volumes:
+      - ./schema.sql:/docker-entrypoint-initdb.d/10-schema.sql:ro
+      - ./data:/data:ro
+      - gama-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gama -d gama"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    shm_size: 256mb
+
+volumes:
+  gama-pgdata:
