@@ -27,7 +27,7 @@ Managing multi-repository agent ecosystems creates unique maintenance bottleneck
 
 **Gentle AI Maintainer Assistant** acts as an **intelligent, explainable router (not a filter)** to protect maintainer cognitive load without losing track of a single issue. It never autonomously closes or decides issues; it provides structured, citation-backed recommendations for human review.
 
-> **All figures in this document are computed dynamically from `issues.json` (1,228 open issues, sanitized snapshot) by `db/rules.py` and `test_rules.py`. No figure is hardcoded.** Reproduce them with `python3 db/rules.py` and `python3 test_rules.py`.
+> **All figures in this document are recomputed by `tools/metrics.py` from `issues.json` (1,228 open issues, sanitized snapshot) and re-verified by `test_rules.py`. No figure is hardcoded.** Reproduce them with `python3 tools/metrics.py`, `python3 db/rules.py` and `python3 test_rules.py`.
 
 ---
 
@@ -38,13 +38,15 @@ This proposal is backed by empirical research on the real 1,228-issue dataset.
 ### 1. Code > LLMs (The Deterministic Pipeline)
 
 * Running full-text LLM prompts on every issue is slow, expensive, and subject to stochastic sampling noise.
-* **Empirical finding:** **483 of 1,228 open issues (39.3%)** can be resolved **deterministically in milliseconds** using pure code rules (`db/rules.py`), with no LLM call:
-  * Feature requests (`feat:` / `type:feature` / `enhancement`) ──► **P2** (415 issues).
-  * Chores, docs, questions (`docs:` / `type:chore`) ──► **P3** (52 issues).
-  * Hard crashes without workaround (`panic:`, `SIGSEGV`, concurrency deadlock) ──► **P1** (2 issues).
+* **Empirical finding:** **510 of 1,228 open issues (41.5%)** can be resolved **deterministically in milliseconds** using pure code rules (`db/rules.py`), with no LLM call:
+  * Feature requests (`feat:` / `type:feature` / `enhancement`) ──► **P2** (395 issues).
+  * Chores, docs, questions (`docs:` / `type:chore`) ──► **P3** (80 issues).
+  * Hard crashes without workaround (`panic:`, `SIGSEGV`, `crashes`, `uncaughtException`, `fails to start`, `out of memory`) ──► **P1** (17 issues).
+  * Crash with a documented workaround or retry recovery ──► **P2** (4 issues, Rule H9).
   * **Silent data loss / corruption ──► "candidato P0, requiere revisión humana"** (14 issues): a *candidate P0 that requires human review*, never an autonomous final P0 decision.
-* The remaining **745 open issues (60.7%)** fall through to the calibrated two-pass LLM pipeline.
-* Evaluated on the calibration sample (34 deterministic matches out of 90 sampled issues): **94.1% agreement** with Judge A (`MiniMax-M3`, 32/34) and **85.3%** with Judge B (`DeepSeek-V4-Flash`, 29/34). This sample was used during calibration; out-of-sample validation is planned for Phase 3.
+* The remaining **718 open issues (58.5%)** fall through to the calibrated two-pass LLM pipeline.
+* Additionally, **26 issues (17 with a loss signal, 9 with a crash signal)** keep their low band but are flagged **"requires human review"** because a hard signal sits under a non-bug prefix (`feat:`/`docs:`). The band is never auto-promoted.
+* On the calibration sample (34 deterministic matches out of 90 sampled issues): **94.1% agreement** with Judge A (`MiniMax-M3`, 32/34) and **85.3%** with Judge B (`DeepSeek-V4-Flash`, 29/34). This sample was used during calibration; **out-of-sample validation is pending a fresh human-labeled sample** (see `PROMISES.md`).
 
 ### 2. Calibrated P1 vs P2 Operational Policy (Rule H9)
 
@@ -55,7 +57,7 @@ This proposal is backed by empirical research on the real 1,228-issue dataset.
 
 ### 3. Asymmetric Escrow ("Hogar + Vista") for Misplaced Issues
 
-* Lexical keyword matching fails (**7.4% precision, 15/202**) due to internal naming collisions (e.g. `gentle-shell` contains `extensions/gentle-ai.ts` and `.git/gentle-ai/`).
+* Lexical keyword matching fails (**7.9% precision, 16/202**: gentle-shell issues mentioning `gentle-ai` that carry a confirmed cross-system link) due to internal naming collisions (e.g. `gentle-shell` contains `extensions/gentle-ai.ts` and `.git/gentle-ai/`).
 * Misplaced issues remain owned by the repository where they were reported (*Hogar*), and only generate notifications for the target system (*Vista*) until a human maintainer explicitly claims and transfers them. Zero issues are lost or silently deleted.
 
 ---
@@ -80,12 +82,18 @@ The walkthrough uses illustrative, clearly synthetic issue numbers so that no in
 .
 ├── README.md               # You are here: proposal overview & evaluation guide
 ├── AGENTS.md               # Governance contract and development protocol
+├── PROMISES.md             # Promise contract: every README claim vs its evidence
+├── DECISIONS.md            # Design decisions with alternatives considered
+├── AUDIT.md                # Read-only adversarial audit of the rules
 ├── STATUS.md               # Phase status, commit hashes and stop-and-wait gate
 ├── OBSERVABILITY.md        # Canonical raw GitHub URLs for every reviewable artifact
 ├── EVALUATION.md           # Self-contained external audit guide (code, tests, metrics)
 ├── gold-p0-p1.md           # Human-review gold set for candidate P0 and P1 rule matches
 ├── issues.json             # Sanitized snapshot of 1,228 open issues (no personal data)
 ├── test_rules.py           # Deterministic rule test suite (concrete cases, no frozen totals)
+├── tools/
+│   ├── metrics.py                       # Recomputes every published figure
+│   └── readonly_check.py                # Fails if any source performs a GitHub mutation
 ├── docs/                   # Architectural & design specifications
 │   ├── walkthrough-examples.md          # 4 concrete end-to-end operational examples
 │   ├── phase-1-ecosystem-inspection.md  # Backlog census (1,228 issues)
@@ -107,7 +115,7 @@ The walkthrough uses illustrative, clearly synthetic issue numbers so that no in
 │   └── maintainer-summary-view.md       # Interactive Markdown layout for human maintainer
 └── db/                     # Data engine & deterministic heuristics
     ├── schema.sql                       # SQLite + FTS5 trigram schema (no Docker needed)
-    ├── rules.py                         # Deterministic rule engine (resolves 39.3% of backlog)
+    ├── rules.py                         # Deterministic rule engine (resolves 41.5% of backlog)
     ├── load.py                          # Ingestion pipeline for ecosystem issues
     ├── sample.py                        # Stratified reproducible sampling tool
     └── ingest.py                        # Judge votes and task completion ingestor
@@ -131,25 +139,40 @@ python3 -m venv .venv
 
 *Expected result:* `FINAL RESULT: 12/12 tests passed successfully.`
 
-### 2. Inspect the Deterministic Rules Engine
+### 2. Recompute Every Published Figure
 
-See how pure code classifies 39.3% of open issues without calling an LLM, and run the rule regression suite:
+`tools/metrics.py` recomputes the backlog census, the deterministic coverage, the rule histogram and the human-review flags. Nothing is hardcoded:
+
+```bash
+python3 tools/metrics.py
+```
+
+### 3. Inspect the Deterministic Rules Engine
+
+See how pure code classifies 41.5% of open issues without calling an LLM, and run the rule regression suite:
 
 ```bash
 python3 db/rules.py
 python3 test_rules.py
 ```
 
-### 3. Review the Triage & Decision Models
+*Expected result:* `FINAL TEST RESULT: 125/125 tests passed successfully.`
+
+### 4. Review the Promise Contract
+
+* [`PROMISES.md`](PROMISES.md) maps every claim in this README to its evidence, status and gap.
+* [`DECISIONS.md`](DECISIONS.md) records each design decision with the alternatives considered.
+
+### 5. Review the Triage & Decision Models
 
 * Read [`docs/triage-model.md`](docs/triage-model.md) to inspect the 13 dimensions and rules H1–H10.
 * Read [`docs/decision-model.md`](docs/decision-model.md) to inspect how human authority is structurally preserved.
 
-### 4. Review the Human-Review Gold Set
+### 6. Review the Human-Review Gold Set
 
 * Read [`gold-p0-p1.md`](gold-p0-p1.md): every issue currently flagged by the deterministic engine, its trigger snippet, and its `veredicto_humano: pendiente` field awaiting maintainer judgment.
 
-### 5. Review the Agent Prompts
+### 7. Review the Agent Prompts
 
 * Inspect [`prompts/system-triage-agent.md`](prompts/system-triage-agent.md) and [`prompts/pass-1-issue-analysis.md`](prompts/pass-1-issue-analysis.md).
 
@@ -195,7 +218,7 @@ Direct GitHub blob URLs for external auditors and automated web fetchers:
 * **H7:** A maintainer override always wins and is recorded as a decision.
 * **H8:** Pass-1 bands are provisional. Pass 2 may correct them.
 * **H9 (Workaround & Retry):** If a documented or accessible manual workaround exists, or if failure is intermittent and recovers upon retry, the issue **MUST** be classified as P2, never P1.
-* **H10 (Code > LLM):** Issues matching unambiguous structural patterns (`feat:` -> P2, `docs:` -> P3, `panic:` -> P1, silent data loss -> **candidate P0 requiring human review**) are classified deterministically by code without invoking an LLM.
+* **H10 (Code > LLM):** Issues matching unambiguous structural patterns (`feat:` -> P2, `docs:` -> P3, `panic:`/`crashes` -> P1, silent data loss -> **candidate P0 requiring human review**) are classified deterministically by code without invoking an LLM. An explicit `docs:`/`chore:` prefix wins over a conflicting `enhancement` label.
 
 Negation and context safeguards are mandatory: a pattern never fires on `no/without/not ... data loss`, on `is not a deadlock`, on fix descriptions such as *"from being silently dropped to being rejected"*, or on metaphorical deadlocks such as *"two rules deadlock each other"*.
 

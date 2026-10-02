@@ -1,59 +1,89 @@
 # OBSERVABILITY.md — Canonical Direct URLs for External Reviewers
 
 > **Observability Registry**
-> This file lists all canonical direct URLs to review the Gentle AI Maintainer Assistant artifacts.
-> Reviewers operating in sandboxed or read-only environments can access each file directly via raw GitHub URLs.
+> Every reviewable artifact lives in the repository root, because the external reviewer reads raw GitHub URLs and cannot navigate directories.
+> All URLs below are raw and verified reachable.
 
 ---
 
-## 1. Core Observability & Status Artifacts
+## 1. Governance, Status & Contract Artifacts
 
-* **STATUS.md (Phase Status & Commit History):**  
+* **PROMISES.md (Promise Contract — read this first):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/PROMISES.md
+
+* **STATUS.md (Phase Status, Commit Hashes, What Rafael Must Decide):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/STATUS.md
 
-* **OBSERVABILITY.md (This Registry):**  
+* **DECISIONS.md (Design Decisions, Alternatives, Consequences):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/DECISIONS.md
+
+* **AUDIT.md (Read-Only Adversarial Audit of H1–H10 and P0–P3):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/AUDIT.md
+
+* **OBSERVABILITY.md (This Registry):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/OBSERVABILITY.md
 
-* **EVALUATION.md (Self-Contained Audit & Verification Guide):**  
+* **EVALUATION.md (Self-Contained Audit & Verification Guide):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/EVALUATION.md
 
 ---
 
-## 2. Code & Test Artifacts (Phase 1.1)
+## 2. Code & Test Artifacts
 
-* **gold-p0-p1.md (Human-Review Gold Set for Candidate P0 and P1):**  
-  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/gold-p0-p1.md
-
-* **test_rules.py (Deterministic Rules Test Suite - 77/77 Passing, concrete cases):**  
-  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/test_rules.py
-
-* **db/rules.py (Deterministic Rule Engine):**  
+* **db/rules.py (Deterministic Rule Engine):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/db/rules.py
 
-* **issues.json (Reproducible 1,228 Open Issues Dataset Snapshot without Personal Data):**  
+* **test_rules.py (Rule Test Suite — 125/125 passing, concrete cases):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/test_rules.py
+
+* **tools/metrics.py (Recomputes Every Published Figure):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/tools/metrics.py
+
+* **tools/readonly_check.py (Verifies the Read-Only Invariant):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/tools/readonly_check.py
+
+* **schemas/validate.py (Contract Test Runner — 12/12 passing):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/schemas/validate.py
+
+* **schemas/triage-inference.schema.json (Recommendation Contract):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/schemas/triage-inference.schema.json
+
+* **gold-p0-p1.md (Human-Review Gold Set, `veredicto_humano: pendiente`):**
+  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/gold-p0-p1.md
+
+* **issues.json (Sanitized Snapshot of 1,228 Open Issues, no personal data):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/issues.json
 
 ---
 
-## 3. Specifications, Governance & Contracts
+## 3. Specifications, Governance & Models
 
-* **README.md (Architecture Overview & Evaluation Guide):**  
+* **README.md (Architecture Overview & Evaluation Guide):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/README.md
 
-* **AGENTS.md (Development Protocol & Governance Principles):**  
+* **AGENTS.md (Development Protocol & Governance Principles):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/AGENTS.md
 
-* **LICENSE (MIT License):**  
+* **LICENSE (MIT License):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/LICENSE
 
-* **schemas/validate.py (Schema Test Runner - 12/12 Passing):**  
-  https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/schemas/validate.py
-
-* **docs/triage-model.md (Triage Model, 13 Dimensions, Rules H1–H10):**  
+* **docs/triage-model.md (Triage Model, 13 Dimensions, Rules H1–H10):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/docs/triage-model.md
 
-* **docs/decision-model.md (Maintainer Decision Authority & Escrow Model):**  
+* **docs/decision-model.md (Maintainer Decision Authority & Escrow Model):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/docs/decision-model.md
 
-* **docs/walkthrough-examples.md (End-to-End Walkthrough with 4 Examples):**  
+* **docs/walkthrough-examples.md (Pipeline Walkthrough, synthetic issue numbers):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/docs/walkthrough-examples.md
+
+---
+
+## 4. Reproduction Commands
+
+```bash
+python3 tools/metrics.py          # every published figure
+python3 db/rules.py               # classification + calibration sample
+python3 test_rules.py             # rule suite (125/125)
+.venv/bin/python schemas/validate.py   # contracts (12/12), needs jsonschema
+python3 tools/readonly_check.py   # read-only invariant
+```

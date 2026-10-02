@@ -1,10 +1,12 @@
-# Gold Standard Calibration Dataset: Candidate P0 and P1 Rule Matches
+# Gold Standard Calibration Dataset: Candidate P0, P1 and H9 Demotions
 
-> **Purpose:** Ground-truth audit artifact recording every issue currently flagged by the deterministic rules as candidate P0 (`rule:candidato_p0_requiere_revision_humana`) or P1 (`rule:hard_crash`) across the ecosystem census (`issues.json` / `db/exp.db`).
+> **Purpose:** Ground-truth audit artifact listing every issue the deterministic engine currently flags, so a maintainer can adjudicate it.
 
-> **Governance invariant:** deterministic P0 is strictly **"candidato P0, requiere revisión humana"** — a candidate requiring human review, never an autonomous final decision. Human maintainers retain final authority; the `veredicto_humano` field is left `pendiente` on purpose.
+> **Governance invariant:** deterministic P0 is strictly **"candidato P0, requiere revisión humana"** — a candidate requiring human review, never an autonomous final decision. The `veredicto_humano` field is left `pendiente` on purpose; the tool never fills it.
 
-> **Reproduce this list:** `python3 db/rules.py` recomputes the counts; `python3 test_rules.py` re-verifies the named regression cases.
+> **Reproduce this list:** `python3 db/rules.py` (counts) and `python3 test_rules.py` (named regression cases). Counts: 14 candidate P0, 17 P1, 4 P2-from-H9.
+
+> **Status:** these are candidates. None has been confirmed by a maintainer. Precision of the P1 vocabulary is **pending human validation** (see `PROMISES.md`).
 
 ---
 
@@ -142,15 +144,105 @@ Total candidates: 14
 
 ## 2. P1 Issues (`rule:hard_crash`)
 
-Total: 2
+Total: 17
+
+---
+
+### gentle-ai#4974
+- **Title:** ``bug(install): Pi commands fail through pi.cmd on Windows`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-ai/issues/4974
+- **Deterministic Rule:** `rule:hard_crash`
+- **Trigger Snippet:** `solves to that CMD launcher, the process can fail to start even though `pi --version` works in an inter`
+- **veredicto_humano:** pendiente
+
+---
+
+### gentle-ai#4878
+- **Title:** `[Automated provider defect] bug(sync): gentle-ai.exe missing from go/bin after 'sync' reports success (Windows)`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-ai/issues/4878
+- **Deterministic Rule:** `rule:hard_crash`
+- **Trigger Snippet:** `ename without `fsync` and can corrupt/revert on crash, but its own text scopes the **self-update**`
+- **veredicto_humano:** pendiente
+
+---
+
+### gentle-ai#4816
+- **Title:** `[Automated provider defect] bug(opencode): orchestrator calls unavailable tools (question, task) — TypeError crashes session before work begins`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-ai/issues/4816
+- **Deterministic Rule:** `rule:hard_crash`
+- **Trigger Snippet:** `available tools (question, task) — TypeError crashes session before work begins ## Observed Behav`
+- **veredicto_humano:** pendiente
+
+---
+
+### gentle-ai#4807
+- **Title:** `bug(TUI) ResolveTarget can bake another tool's wrapper as the OpenCode target, creating a launcher cycle that fork-bombs`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-ai/issues/4807
+- **Deterministic Rule:** `rule:hard_crash`
+- **Trigger Snippet:** `eter process per lap, until the machine runs out of memory.  <img width="2339" height="1323" alt="Image`
+- **veredicto_humano:** pendiente
+
+---
+
+### gentle-ai#4677
+- **Title:** `bug(cli): bare `gentle-ai` invocation crashes with Go runtime panic (traceback did not unwind completely) during startup dependency detection on Windows`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-ai/issues/4677
+- **Deterministic Rule:** `rule:hard_crash`
+- **Trigger Snippet:** `bug(cli): bare `gentle-ai` invocation crashes with Go runtime panic (traceback did not unw`
+- **veredicto_humano:** pendiente
+
+---
+
+### gentle-ai#4670
+- **Title:** `bug(review): stop-hook and mode status fail on a Windows SMB share while RDD is off (2.9.1)`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-ai/issues/4670
+- **Deterministic Rule:** `rule:hard_crash`
+- **Trigger Snippet:** `nd phase, but the observable failure is a Go runtime panic.  ### Privacy  This report intentionally omi`
+- **veredicto_humano:** pendiente
 
 ---
 
 ### gentle-ai#3190
 - **Title:** `bug(review): review start aborts on Windows when Go runtime cannot allocate memory`
 - **Issue Link:** https://github.com/Gentleman-Programming/gentle-ai/issues/3190
-- **Deterministic Rule:** `rule:hard_crash` 
+- **Deterministic Rule:** `rule:hard_crash`
 - **Trigger Snippet:** `d. - Attempt 2 aborted with exit code 2 and `fatal error: runtime: cannot allocate memory`. - The Go stack ide`
+- **veredicto_humano:** pendiente
+
+---
+
+### gentle-ai#2648
+- **Title:** `bug(review): commit review hook inserts fabricated/unverified technical narrative into committed markdown`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-ai/issues/2648
+- **Deterministic Rule:** `rule:hard_crash`
+- **Trigger Snippet:** `biendo fallas observadas durante la corrida (crashes de subprocesos, sin causa raiz confirmada).`
+- **veredicto_humano:** pendiente
+
+---
+
+### gentle-ai#1828
+- **Title:** `fix(agent): uninstall fails for kimi because settings rewrite assumes JSON`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-ai/issues/1828
+- **Deterministic Rule:** `rule:hard_crash`
+- **Trigger Snippet:** `ug Description  `gga uninstall --agent kimi` crashes and exits 1 because the uninstall service un`
+- **veredicto_humano:** pendiente
+
+---
+
+### gentle-ai#452
+- **Title:** `Generation failed when trying to create your own agent.`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-ai/issues/452
+- **Deterministic Rule:** `rule:hard_crash`
+- **Trigger Snippet:** `eturn any content at all, causing the parser to crash.  <img width="632" height="358" alt="Image"`
+- **veredicto_humano:** pendiente
+
+---
+
+### gentle-shell#1620
+- **Title:** `fix(quiet-tools): re-rendering an expanded read-with-image result crashes Pi (text.setText is not a function)`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-shell/issues/1620
+- **Deterministic Rule:** `rule:hard_crash`
+- **Trigger Snippet:** `rendering an expanded read-with-image result crashes Pi (text.setText is not a function) ### Befo`
 - **veredicto_humano:** pendiente
 
 ---
@@ -158,23 +250,115 @@ Total: 2
 ### gentle-shell#1606
 - **Title:** `bug(skill-registry): unhandled async EMFILE from directory watcher crashes pi on startup`
 - **Issue Link:** https://github.com/Gentleman-Programming/gentle-shell/issues/1606
-- **Deterministic Rule:** `rule:hard_crash` 
-- **Trigger Snippet:** `p ### Problem  `pi` exits on startup with an uncaught exception coming from the skill-registry extension's d`
+- **Deterministic Rule:** `rule:hard_crash`
+- **Trigger Snippet:** `nhandled async EMFILE from directory watcher crashes pi on startup ### Problem  `pi` exits on sta`
 - **veredicto_humano:** pendiente
 
 ---
 
-## 3. Released False Positives (Corrected by Negation & Context Safeguards)
+### gentle-shell#1236
+- **Title:** `bug(agents): Agents widget crashes when task model metadata is missing`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-shell/issues/1236
+- **Deterministic Rule:** `rule:hard_crash`
+- **Trigger Snippet:** `bug(agents): Agents widget crashes when task model metadata is missing ### Befo`
+- **veredicto_humano:** pendiente
 
-These issues were flagged by earlier, unguarded regexes and are **no longer flagged** after the negation and context safeguards. They are recorded here for auditability, with the reason and the regression test that locks the behavior in.
+---
+
+### gentle-shell#1139
+- **Title:** `bug(review): a reviewer child terminated by a signal is reported as a generic pi-failed transport failure`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-shell/issues/1139
+- **Deterministic Rule:** `rule:hard_crash`
+- **Trigger Snippet:** `ild killed by `SIGKILL`/`SIGTERM` (or by the OOM killer) cannot report which signal ended it. `exit_`
+- **veredicto_humano:** pendiente
+
+---
+
+### gentle-shell#962
+- **Title:** `bug(skill-registry): recursive skill watcher crashes Pi with uncaughtException ENOENT when a watched skill subdirectory is removed`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-shell/issues/962
+- **Deterministic Rule:** `rule:hard_crash`
+- **Trigger Snippet:** `bug(skill-registry): recursive skill watcher crashes Pi with uncaughtException ENOENT when a watc`
+- **veredicto_humano:** pendiente
+
+---
+
+### gentle-shell#750
+- **Title:** `bug(pi-pretty): invalid StubText fallback crashes Pi in MouseRegion.render`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-shell/issues/750
+- **Deterministic Rule:** `rule:hard_crash`
+- **Trigger Snippet:** `bug(pi-pretty): invalid StubText fallback crashes Pi in MouseRegion.render ### Before submitti`
+- **veredicto_humano:** pendiente
+
+---
+
+### gentle-shell#644
+- **Title:** `bug(extensions): pi-pretty hard-crashes extension load when @heyhuynhgiabuu/pi-pretty is not installed`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-shell/issues/644
+- **Deterministic Rule:** `rule:hard_crash`
+- **Trigger Snippet:** `bug(extensions): pi-pretty hard-crashes extension load when @heyhuynhgiabuu/pi-prett`
+- **veredicto_humano:** pendiente
+
+---
+
+## 3. P2 Issues demoted by Rule H9 (`rule:crash_with_workaround_demoted_to_p2`)
+
+Total: 4
+
+Each of these reports a crash **and** an explicit workaround or retry recovery, so Rule H9 keeps them at P2.
+
+---
+
+### gentle-ai#4809
+- **Title:** `bug(pi): CodeGraph child overlay corrupts tools frontmatter into invalid YAML — Pi fails to start`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-ai/issues/4809
+- **Deterministic Rule:** `rule:crash_with_workaround_demoted_to_p2`
+- **Trigger Snippet:** `s` with a mapping item would catch this.  ## Workaround  Repair the two lines back to a valid list (`
+- **veredicto_humano:** pendiente
+
+---
+
+### gentle-ai#3016
+- **Title:** `fix(update): honor pnpm for OpenCode plugin upgrades`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-ai/issues/3016
+- **Deterministic Rule:** `rule:crash_with_workaround_demoted_to_p2`
+- **Trigger Snippet:** `wned tree.  A pnpm-based upgrade is the safe workaround. A proposed fix is prepared in the contribut`
+- **veredicto_humano:** pendiente
+
+---
+
+### gentle-shell#1052
+- **Title:** `bug(provider): kimi-k3 tool calls fail with 400 'tool_call_id is not found' after compaction or parallel batches`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-shell/issues/1052
+- **Deterministic Rule:** `rule:crash_with_workaround_demoted_to_p2`
+- **Trigger Snippet:** `cription: Kimi Code (OAuth, device flow)  ## Workaround for users today  Use `kimi-coding/kimi-for-c`
+- **veredicto_humano:** pendiente
+
+---
+
+### gentle-shell#745
+- **Title:** `bug(gentle-shell): /reload crashes Pi — stale session ctx captured in prompt/footer render closures (uncaughtException)`
+- **Issue Link:** https://github.com/Gentleman-Programming/gentle-shell/issues/745
+- **Deterministic Rule:** `rule:crash_with_workaround_demoted_to_p2`
+- **Trigger Snippet:** `t is a different instance, not a duplicate.  Workaround until fixed: `GENTLE_PI_SHELL=0` (or `false``
+- **veredicto_humano:** pendiente
+
+---
+
+## 4. Released False Positives (kept out by negation and context safeguards)
+
+These issues were flagged by earlier, unguarded regexes and are **no longer flagged** after the safeguards. They are recorded for auditability, with the reason and the test that locks the behavior in.
 
 | Issue | Trap | Reason released | Regression test |
 | --- | --- | --- | --- |
 | `gentle-ai#5007` | `No workaround data loss: the local store is intact` | Explicit negation (`no ... data loss`) | `test_rules.py` §2, §4 |
 | `gentle-ai#4792` | `No observed runtime failure or data loss is claimed.` | Explicit negation (`no observed ... data loss`) | `test_rules.py` §2, §4 |
 | `gentle-ai#2628` | `from being silently dropped to being rejected` | Fix description, not a defect | `test_rules.py` §3, §4 |
-| `gentle-ai#4807` | `It is a fork bomb, not a deadlock.` | Negated deadlock | `test_rules.py` §6, §4 |
+| `gentle-ai#5166` | `dead-ending the lineage` | Metaphorical dead-end; `build cannot start` is a blocked build, not a crash | `test_rules.py` §6 |
+| `gentle-ai#4991` | `RDD assessment cannot start` | Generic `cannot start` deliberately not matched | `test_rules.py` §6 |
 | `gentle-ai#5094` | `the review is deadlocked` | Metaphorical deadlock, no process/thread context | `test_rules.py` §6 |
 | `gentle-ai#4286` | `The two rules deadlock each other.` | Metaphorical deadlock, no process/thread context | `test_rules.py` §6 |
 | `gentle-ai#2366` | `ordinary review denials deadlock the agent` | Metaphorical deadlock, no process/thread context | `test_rules.py` §6 |
 | `gentle-shell#1087` | `sdd-remediate run can deadlock before phase work` | Metaphorical deadlock, no process/thread context | `test_rules.py` §6 |
+
+**Note on `gentle-ai#4807`:** it appeared here in an earlier revision because of its `not a deadlock` phrase. The deadlock trap is still rejected, but the widened vocabulary now detects a **different, real signal** in the same issue (the launcher consumes memory until the machine runs out of memory). It is therefore listed under P1, not released. See `DECISIONS.md` D-006.

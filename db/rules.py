@@ -5,15 +5,23 @@ rules.py — Deterministic triage rule engine for the Gentle AI ecosystem
 Applies code-based heuristics BEFORE invoking an LLM:
   1. Features / enhancements -> P2 (rule:feature_request)
   2. Docs / chores / questions -> P3 (rule:docs_chore_question)
-  3. Silent data loss / corruption -> candidato P0, requiere revisión humana (rule:candidato_p0_requiere_revision_humana)
+  3. Silent data loss / corruption -> candidato P0, requiere revisión humana
+     (rule:candidato_p0_requiere_revision_humana)
   4. Panic / SIGSEGV / hard crash without workaround -> P1 (rule:hard_crash)
   5. Crash WITH documented workaround / retry -> P2 (rule:crash_with_workaround_demoted_to_p2)
   6. Cross-repository links (cross_refs) -> cross classification
 
 Governance Invariants:
-  - Deterministic P0 is strictly a candidate ("candidato P0, requiere revisión humana"), never an autonomous final decision.
-  - Negations ("no data loss", "without data loss", "is not a deadlock") and fix descriptions ("from being silently dropped to being rejected") never trigger high-priority rules.
-  - Deadlocks require process or thread context (goroutine, thread, mutex, process, hang); metaphorical deadlocks ("two rules deadlock") are ignored.
+  - Deterministic P0 is strictly a candidate ("candidato P0, requiere revisión humana"),
+    never an autonomous final decision.
+  - Negations ("no data loss", "without data loss", "is not a deadlock") and fix
+    descriptions ("from being silently dropped to being rejected") never trigger
+    high-priority rules.
+  - Deadlocks require process or thread context (goroutine, thread, mutex, process,
+    hang); metaphorical deadlocks ("two rules deadlock") are ignored.
+  - A feature/docs issue that nonetheless carries a hard P0/P1 signal is NOT promoted
+    to P0/P1 automatically. It keeps its band and is flagged for human review.
+  - No figure is hardcoded. All counts are computed dynamically.
 
 Usage:
   ./rules.py
@@ -32,13 +40,29 @@ SNAPSHOT_PATH = Path(__file__).parent.parent / "issues.json"
 P0_CANDIDATE_LABEL = "candidato P0, requiere revisión humana"
 RULE_P0_CANDIDATE = "rule:candidato_p0_requiere_revision_humana"
 
+# Conventional title prefixes recognized by the ecosystem.
+KNOWN_PREFIXES = (
+    "feat", "feature", "fix", "bug", "docs", "doc", "chore", "typo",
+    "refactor", "test", "ci", "perf", "style", "question", "review",
+    "meta", "security",
+)
+
+# Title prefix extraction tolerates leading backticks, quotes and bracketed
+# prefixes such as "[Automated provider defect] bug(opencode): ...".
+_PREFIX_LEAD = re.compile(
+    r"^\s*(?:[`'\"\[]+\s*|\[[^\]]*\]\s*)*"
+    r"(?P<tok>feat|feature|fix|bug|docs?|chore|typo|refactor|test|ci|perf|style|question|review|meta|security)\b",
+    re.IGNORECASE,
+)
+
+
 # 1. P0: Silent data loss & corruption base pattern
 RE_P0_SILENT_BASE = re.compile(
     r"(?:\bsilent(?:ly)?\s+(?:corrupt(?:s|ed|ing|ion)?|delet(?:es|ed|ing|ion)?|drop(?:s|ped|ping)?|overwrit(?:es|ing)?|overwrote|overwritten|los(?:es|t|ing)?|fail(?:s|ed|ing)?\s+to\s+save)\b|\bdata\s+loss\b)",
     re.IGNORECASE,
 )
 
-# Negation safeguards for data loss (e.g. 'no data loss', 'without data loss', 'not data loss', 'zero data loss')
+# Negation safeguards for data loss (e.g. 'no data loss', 'without data loss', 'not data loss')
 RE_DATA_LOSS_NEGATION = re.compile(
     r"\b(?:no|not|without|zero|neither|nor|prevent(?:s|ed|ing)?|avoid(?:s|ed|ing)?|protect(?:s|ed|ing)?\s+against|safeguard(?:s|ed|ing)?\s+against)\b[^.\n;]{0,60}?\bdata\s+loss\b|"
     r"\bdata\s+loss\b[^.\n;]{0,50}?\b(?:is\s+(?:claimed|none)|avoided|prevented|not\s+observed|not\s+found)\b",
@@ -58,16 +82,47 @@ RE_SILENT_NEGATION = re.compile(
     re.IGNORECASE,
 )
 
-# 2. P1: Hard crashes core runtime errors
+# 2. P1: Hard crashes. Vocabulary widened after the adversarial audit (AUDIT.md):
+# verb forms of "crash", "uncaughtException" (camelCase), "runtime panic" without a
+# colon, "fails to start", "out of memory". Generic "cannot start" is deliberately NOT
+# matched because "review cannot start" is a blocked workflow, not a process crash.
 RE_P1_CRASH_CORE = re.compile(
-    r"(?:\bpanic:\s*|\bSIGSEGV\b|\bfatal error:\s*runtime\b|\bsegmentation fault\b|\bNullPointerException\b|\buncaught exception\b|\bstack overflow\b)",
+    r"(?:"
+    r"\bpanic:\s*"
+    r"|\bruntime\s+panic\b"
+    r"|\bSIGSEGV\b"
+    r"|\bfatal\s+error:\s*runtime\b"
+    r"|\bsegmentation\s+fault\b"
+    r"|\bNullPointerException\b"
+    r"|\buncaught\s*exception\b"
+    r"|\bunhandled\s*(?:exception|rejection)\b"
+    r"|\bstack\s+overflow\b"
+    r"|\bout\s+of\s+memory\b"
+    r"|\bOOM[- ]?kill\w*\b"
+    r"|\bfail(?:s|ed|ing)?\s+to\s+start\b"
+    r"|\b(?:refuses?|refused|unable)\s+to\s+start\b"
+    r"|\b(?:pi|process|binary|app|service|server|daemon|cli|command|launcher|pi-pretty|the\s+tool)\b[^.\n]{0,12}?\b(?:cannot|can'?t|will\s+not|won'?t)\s+(?:even\s+)?start\b"
+    r"|\bcrash(?:es|ed|ing)\b"
+    r"|\b(?:a|an|the|hard|fatal|silent|app|pi|process|binary|it|to|on|after|during)\s+crash\b"
+    r"|\bcrash[- ](?:loop|on|when|after|during|escalat\w*)\b"
+    r"|\bbricked\b"
+    r")",
+    re.IGNORECASE,
+)
+
+# Idioms where "crash" is a design property or a dismissed hypothesis, not an event.
+RE_CRASH_HANDLED = re.compile(
+    r"(?:\bcrash[-\s]?(?:safe|safety|recover\w*|consistent\w*|only|proof|free|on-)\w*\b"
+    r"|\b(?:avoid|avoids|avoided|avoiding|prevent|prevents|prevented|preventing|stop|stops|stopped|protect|protects|protected)\b"
+    r"[^.\n;]{0,40}?\b(?:from\s+)?crash\w*\b"
+    r"|\b(?:incorrectly|mistakenly|falsely|wrongly)\s+(?:conclude|concludes|concluded|assume|assumes|assumed|report|reports|reported|claim|claims|claimed)\b[^.\n]{0,80}?\b(?:start|crash|fail)\w*\b)",
     re.IGNORECASE,
 )
 
 # Deadlock base pattern
 RE_DEADLOCK_BASE = re.compile(r"\bdeadlock(?:ed|s)?\b", re.IGNORECASE)
 
-# Negation for deadlock (e.g. 'is not a deadlock', 'not a deadlock')
+# Negation for deadlock (e.g. 'is not a deadlock')
 RE_DEADLOCK_NEGATION = re.compile(
     r"\b(?:not|never|is\s+not|hardly)\s+(?:a\s+)?deadlock\b",
     re.IGNORECASE,
@@ -79,14 +134,32 @@ RE_CONCURRENCY_CONTEXT = re.compile(
     re.IGNORECASE,
 )
 
+# Trailing negation ("... has not been demonstrated / observed / does not apply")
+RE_NEG_AFTER = re.compile(
+    r"\b(?:has|have|had|was|were|is|are|does|do|did)?\s*not\s+(?:been\s+)?"
+    r"(?:demonstrated|observed|reproduced|confirmed|reported|shown|present|found|apply)\b",
+    re.IGNORECASE,
+)
+
+# Leading negation immediately before a signal ("not a crash", "no crash", "no system crash")
+RE_NEG_BEFORE = re.compile(
+    r"(?:\bnothing\b[^.\n;]{0,20}?|\b(?:no|not|never|without|hardly|nor|neither)\b(?:\s+\w+){0,3}\s*)\s*$",
+    re.IGNORECASE,
+)
+
 # 3. Workaround & retry recovery detection (Codifies Rule H9)
 RE_WORKAROUND_NEGATIVE = re.compile(
-    r"\b(?:no(?:ne)?|without(?:\s+any)?|unaware\s+of\s+any)\s+(?:known\s+)?workaround\b|\bworkaround:\s*(?:none|n/?a|no)\b",
+    r"\b(?:no(?:ne)?|without(?:\s+any)?|unaware\s+of\s+any)\s+(?:known\s+)?workaround\b"
+    r"|\bworkaround:\s*(?:none|n/?a|no)\b"
+    r"|\b(?:no|not|never|without)\b[^.\n;]{0,30}?\b(?:work\s*around|workaround)\b",
     re.IGNORECASE,
 )
 
 RE_WORKAROUND_POSITIVE = re.compile(
-    r"\b(?:workaround|work-around|temporary fix|temp fix|mitigation|bypass|recovers?(?:\s+upon|\s+on)?\s+retry|retry succeeds|restart fixes)\b",
+    r"\b(?:workaround|work-around|work\s+around|temporary fix|temp fix"
+    r"|recovers?(?:\s+upon|\s+on)?\s+retry|retry succeeds|retrys?\s+(?:works|helps)"
+    r"|restart(?:ing)?\s+(?:fixes|helps|works)|restart fixes"
+    r"|works?\s+(?:if|after)|re-?run\w*\s+(?:works|fixes))\b",
     re.IGNORECASE,
 )
 
@@ -95,9 +168,37 @@ RE_P3_DOCS = re.compile(
     re.IGNORECASE,
 )
 
+EXPLICIT_DOCS_PREFIXES = ("docs", "doc", "chore", "typo")
+EXPLICIT_FEATURE_PREFIXES = ("feat", "feature")
+
+
+def derive_title_prefix(title: str, provided: str) -> str:
+    """
+    Returns a normalized conventional prefix.
+
+    The ingested `title_prefix` is sometimes empty even though the title starts with
+    a conventional token, because of a leading backtick or a bracketed prefix such as
+    "[Automated provider defect]". This function recovers the token from the title.
+    """
+    m = _PREFIX_LEAD.match(title or "")
+    if m:
+        return m.group("tok").lower()
+    return (provided or "").strip().lower()
+
+
+def _is_negated(text: str, start: int, end: int) -> bool:
+    """True when the signal at [start, end) is negated right before or right after."""
+    before = text[max(0, start - 40):start]
+    if RE_NEG_BEFORE.search(before):
+        return True
+    after = text[end:end + 60]
+    if RE_NEG_AFTER.search(after):
+        return True
+    return False
+
 
 def has_active_workaround(text: str) -> bool:
-    """Returns True if text specifies a workaround or retry recovery without stating none exists."""
+    """True when the text specifies a workaround or retry recovery without stating none exists."""
     if RE_WORKAROUND_NEGATIVE.search(text):
         return False
     return bool(RE_WORKAROUND_POSITIVE.search(text))
@@ -105,7 +206,7 @@ def has_active_workaround(text: str) -> bool:
 
 def has_silent_data_loss(text: str) -> bool:
     """
-    Returns True if text reports an unnegated silent data loss or corruption event.
+    True when the text reports an unnegated silent data loss or corruption event.
     Rejects negations ('no data loss', 'without data loss') and fix descriptions.
     """
     for m in RE_P0_SILENT_BASE.finditer(text):
@@ -114,30 +215,36 @@ def has_silent_data_loss(text: str) -> bool:
         end = min(len(text), m.end() + 80)
         window = text[start:end]
 
-        # Reject fix descriptions ('from being silently dropped to being rejected')
         if RE_FIX_DESCRIPTION.search(window):
             continue
-
-        # Reject data loss negations
-        if "data loss" in matched:
-            if RE_DATA_LOSS_NEGATION.search(window):
-                continue
-
-        # Reject general silent negations
+        if "data loss" in matched and RE_DATA_LOSS_NEGATION.search(window):
+            continue
         if RE_SILENT_NEGATION.search(window):
             continue
-
+        if _is_negated(text, m.start(), m.end()):
+            continue
         return True
     return False
 
 
 def is_hard_crash(text: str) -> bool:
     """
-    Returns True if text reports a hard runtime crash (SIGSEGV, panic, stack overflow)
-    or a concurrency deadlock with explicit thread/process/mutex/hang context.
-    Rejects 'not a deadlock' and metaphorical deadlocks ('two rules deadlock each other').
+    True when the text reports a hard runtime crash (panic, SIGSEGV, crash, fatal
+    error, out of memory, fails to start, stack overflow) or a concurrency deadlock
+    with explicit thread/process/mutex/hang context.
+
+    Rejects negation ('not a crash', 'has not been demonstrated') and compound
+    adjectives ('crash-safe'); metaphorical deadlocks are rejected separately.
     """
-    if RE_P1_CRASH_CORE.search(text):
+    for m in RE_P1_CRASH_CORE.finditer(text):
+        window_start = max(0, m.start() - 120)
+        window_end = min(len(text), m.end() + 120)
+        window = text[window_start:window_end]
+        # 'crash-safe', 'crash-recoverable', 'avoid the crash' describe design, not an event.
+        if RE_CRASH_HANDLED.search(window):
+            continue
+        if _is_negated(text, m.start(), m.end()):
+            continue
         return True
 
     for m in RE_DEADLOCK_BASE.finditer(text):
@@ -153,16 +260,23 @@ def is_hard_crash(text: str) -> bool:
     return False
 
 
+def has_hard_signal(text: str) -> bool:
+    """True when the text carries any unnegated hard P0/P1 signal."""
+    return has_silent_data_loss(text) or is_hard_crash(text)
+
+
 def classify_issue_deterministically(row, labels, cross_refs):
     """
     Returns (band, cross, rule_name) or (None, cross, None) if indeterminate.
-    
-    Invariant: P0 is strictly 'candidato P0, requiere revisión humana', never a final decision.
+
+    Invariant: P0 is strictly 'candidato P0, requiere revisión humana', never a final
+    decision. A hard signal under a non-bug prefix does NOT change the band; use
+    requires_human_review() to detect that case.
     """
     row_dict = dict(row) if hasattr(row, "keys") else (row or {})
     title = row_dict.get("title") or ""
     body = row_dict.get("body") or ""
-    prefix = (row_dict.get("title_prefix") or "").lower()
+    prefix = derive_title_prefix(title, row_dict.get("title_prefix") or "")
     full_text = f"{title}\n{body}"
 
     # ── 1. CROSS-SYSTEM (from cross_refs) ──
@@ -176,29 +290,30 @@ def classify_issue_deterministically(row, labels, cross_refs):
     label_set = {l.lower() for l in labels}
     is_bug = prefix in ("bug", "fix") or "type:bug" in label_set or "bug" in label_set
 
-    # Check P0: Silent data loss / corruption -> Candidate P0, requires human review
+    # Check candidate P0: silent data loss / corruption
     if is_bug and has_silent_data_loss(full_text):
         return P0_CANDIDATE_LABEL, cross, RULE_P0_CANDIDATE
 
-    # Check P1 vs P2 (Rule H9 & H10): Hard crash / fatal engine stall
+    # Check P1 vs P2 (Rule H9 & H10): hard crash, demoted when a workaround exists
     if is_bug and is_hard_crash(full_text):
         if has_active_workaround(full_text):
             return "P2", cross, "rule:crash_with_workaround_demoted_to_p2"
         return "P1", cross, "rule:hard_crash"
 
-    # Check P2: Feature / enhancement request
-    if (
-        prefix in ("feat", "feature")
-        or "type:feature" in label_set
-        or "enhancement" in label_set
-        or "feature" in label_set
-    ):
+    # Explicit conventional prefix wins over a conflicting type label.
+    # (Fixes the audit finding: a `docs:` issue with an `enhancement` label was P2.)
+    if prefix in EXPLICIT_DOCS_PREFIXES or prefix in ("refactor", "test", "ci", "style"):
+        return "P3", cross, "rule:docs_chore_question"
+
+    if prefix in EXPLICIT_FEATURE_PREFIXES:
         return "P2", cross, "rule:feature_request"
 
-    # Check P3: Documentation, questions, chores, typos
+    # Label-only fallbacks
+    if "type:feature" in label_set or "enhancement" in label_set or "feature" in label_set:
+        return "P2", cross, "rule:feature_request"
+
     if (
-        prefix in ("docs", "doc", "chore", "typo")
-        or "type:chore" in label_set
+        "type:chore" in label_set
         or "documentation" in label_set
         or "question" in label_set
         or "discussion" in label_set
@@ -210,11 +325,32 @@ def classify_issue_deterministically(row, labels, cross_refs):
     return None, cross, None
 
 
+def requires_human_review(row, labels, cross_refs):
+    """
+    Returns (bool, reason).
+
+    True when a non-bug issue keeps a low band (P2/P3) yet carries a hard P0/P1
+    signal. The band is intentionally NOT changed (never auto-promote a `feat:` to
+    P1); the maintainer is asked to look. See DECISIONS.md D-004.
+    """
+    row_dict = dict(row) if hasattr(row, "keys") else (row or {})
+    band, cross, rule = classify_issue_deterministically(row_dict, labels, cross_refs)
+    if band not in ("P2", "P3"):
+        return False, None
+    text = f"{row_dict.get('title') or ''}\n{row_dict.get('body') or ''}"
+    if has_silent_data_loss(text):
+        return True, "hard_signal_under_prefix: silent data loss under a non-bug prefix"
+    if is_hard_crash(text):
+        return True, "hard_signal_under_prefix: crash under a non-bug prefix"
+    return False, None
+
+
 def run_snapshot_evaluation(snapshot_data):
     """Evaluates classification over a loaded JSON snapshot dynamically without hardcoded figures."""
     total = len(snapshot_data)
     rule_counts = {}
     covered = 0
+    review_flagged = 0
 
     for item in snapshot_data:
         band, cross, rule = classify_issue_deterministically(
@@ -223,6 +359,9 @@ def run_snapshot_evaluation(snapshot_data):
         if band is not None:
             covered += 1
             rule_counts[rule] = rule_counts.get(rule, 0) + 1
+        flag, reason = requires_human_review(item, item.get("labels", []), item.get("cross_refs", []))
+        if flag:
+            review_flagged += 1
 
     grey = total - covered
     pct_covered = (100.0 * covered / total) if total > 0 else 0.0
@@ -232,7 +371,8 @@ def run_snapshot_evaluation(snapshot_data):
     print(f" DETERMINISTIC TRIAGE EVALUATION (from issues.json snapshot, {total} issues)")
     print("════════════════════════════════════════════════════════════════════")
     print(f"  Classified by code (without LLM): {covered} ({pct_covered:.1f}%)")
-    print(f"  Residual grey-area (requires LLM): {grey} ({pct_grey:.1f}%)\n")
+    print(f"  Residual grey-area (requires LLM): {grey} ({pct_grey:.1f}%)")
+    print(f"  Flagged for human review (hard signal under low band): {review_flagged}\n")
     print("  Breakdown by deterministic rule:")
     for rule, cnt in sorted(rule_counts.items(), key=lambda x: x[1], reverse=True):
         pct = (100.0 * cnt / total) if total > 0 else 0.0
@@ -279,7 +419,10 @@ def run_demo():
     for tc in test_cases:
         row = {"id": tc["number"], "system_id": 1, "slug": tc["slug"], "number": tc["number"], "title": tc["title"], "body": tc["body"], "title_prefix": tc["title_prefix"]}
         band, cross, rule = classify_issue_deterministically(row, tc["labels"], tc["cross_refs"])
+        flag, reason = requires_human_review(row, tc["labels"], tc["cross_refs"])
         status = f"──► [{band}] via {rule}" if band else "──► [GREY AREA] Requires LLM Pass 1"
+        if flag:
+            status += "  ⚠ REQUIRES HUMAN REVIEW"
         print(f" • {tc['slug']}#{tc['number']}: \"{tc['title'][:55]}\"")
         print(f"   {status}\n")
 
@@ -339,7 +482,7 @@ def main():
     for rule, cnt in sorted(rule_counts.items(), key=lambda x: x[1], reverse=True):
         print(f"    - {rule:42s}: {cnt:4d} issues ({100.0 * cnt / total_all:.1f}%)")
 
-    # Evaluate against the 90-issue sample (Run #1) where we have Judge A and Judge B votes
+    # Evaluate against the calibration sample where we have Judge A and Judge B votes
     cur.execute("""
         SELECT i.id, i.system_id, ri.issue_id, s.slug, i.number, i.title, i.body, i.title_prefix
         FROM run_issues ri
