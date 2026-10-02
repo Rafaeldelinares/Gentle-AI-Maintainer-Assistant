@@ -179,8 +179,8 @@ def main():
     print("════════════════════════════════════════════════════════════════════")
     print(f"  issues analysed:      {len(issues)}")
     print(f"  candidate pairs:      {len(ranked)}")
-    print(f"  high-confidence pairs:{len(high)}")
-    print(f"  medium pairs:         {len(medium)}")
+    print(f"  strong-evidence pairs:{len(high)}")
+    print(f"  weaker-evidence pairs:{len(medium)}")
     for slug, cnt in by_repo.most_common():
         print(f"    - {slug}: {cnt}")
 
