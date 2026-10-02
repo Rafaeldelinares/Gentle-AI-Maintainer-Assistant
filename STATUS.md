@@ -11,7 +11,7 @@
 * **Status:** Complete (`77/77` rule tests passing, `12/12` schema tests passing)
 * **Date:** 2026-10-02
 * **Phase 1 Commit:** `854c38c` (`fase 1: fix regex boundaries, test suite, H9-H10 calibration, and reproducible snapshot`)
-* **Phase 1.1 Commit:** the documentation-hash record commit for this phase follows the content commit; see the top-level repository log.
+* **Phase 1.1 Commit:** `322f9ea` (`fase 1.1: negation/deadlock safeguards, candidate P0 invariant, concrete-case tests`) — this STATUS record is a documentation-only follow-up commit.
 
 ---
 
