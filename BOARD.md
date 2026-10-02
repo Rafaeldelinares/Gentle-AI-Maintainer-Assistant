@@ -64,7 +64,7 @@ Cada aplicación tiene su propio tablero. Las tarjetas no se cruzan y no hay vis
 [ gentle-ai ]  [ engram ]  [ gentle-shell ]        ← pestañas en la barra superior
 ```
 
-Distribución **derivada** por el motor, antes de que nadie mueva nada (reproducible con `python3 tools/metrics.py`, snapshot `39553742aa7bf1ea`):
+Distribución **derivada por el motor** (Clase C: medida localmente el 2026-10-02 sobre `db/board.db`, que está fuera de git, así que **no** es reproducible desde el artefacto congelado; se reproduce con `python3 board/server.py --ingest --port 8770`). El digest que **sí** emite un comando es el de la proyección derivada: `b0a61cf3325ef7f1` → `python3 tools/determinism_check.py`:
 
 | Aplicación | Total | Entrada | Falta información | Revisión humana | Listo | En manos |
 | --- | --- | --- | --- | --- | --- | --- |

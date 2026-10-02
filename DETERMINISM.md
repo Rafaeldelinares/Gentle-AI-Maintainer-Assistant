@@ -22,7 +22,7 @@ Es todo lo que el sistema **calcula** desde el snapshot congelado:
 
 | Qué | Chequeo | Resultado |
 | --- | --- | --- |
-| Clasificación del motor | mismo snapshot con `PYTHONHASHSEED` 1, 7 y 99 | digest idéntico `2779c866aca75dc4…` |
+| Clasificación del motor | mismo snapshot, semillas distintas; tanto los cuatro reportes de módulos como la proyección del tablero pasan por el motor | **el motor no emite un digest propio.** Se comprueba por los digests de salida derivada: `python3 tools/determinism_check.py` → tablero `b0a61cf3325ef7f1…`, A `0c0ccaca24fb234b…`, B `7e63683152dd4e70…`, C `684fcc589d8629bc…`, D `7cd51c438a563c4c…`. *(Una versión anterior citaba un digest `2779c866aca75dc4…` que ningún comando producía.)* |
 | Reportes de módulos A–D | dos procesos distintos | byte-idénticos |
 | Proyección derivada del tablero | ingest fresco en base temporal, dos semillas | digest idéntico |
 | Cifras publicadas | `tools/metrics.py` las recalcula | ninguna escrita a mano |
