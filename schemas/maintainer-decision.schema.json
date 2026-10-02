@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gentle-ai.dev/contracts/maintainer-assistant/v1/schemas/maintainer-decision.schema.json",
+  "title": "Gentle AI Maintainer Assistant - Maintainer Decision v1",
+  "description": "Authoritative decision emitted by a human maintainer — strictly human, never agent-authored",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "issue_ref",
+    "actor",
+    "action",
+    "band",
+    "cross_system",
+    "reason",
+    "relocation",
+    "supersedes_decision_id",
+    "decided_at"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "gentle-ai.maintainer-assistant.maintainer-decision/v1"
+    },
+    "issue_ref": {
+      "$ref": "#/$defs/issue_ref"
+    },
+    "actor": {
+      "type": "string",
+      "description": "Handle of the human maintainer who approved or overrode the recommendation",
+      "minLength": 2,
+      "maxLength": 100
+    },
+    "action": {
+      "type": "string",
+      "enum": ["accept", "override", "defer", "close"]
+    },
+    "band": {
+      "type": "string",
+      "enum": ["P0", "P1", "P2", "P3"]
+    },
+    "cross_system": {
+      "type": "string",
+      "enum": ["none", "dependency", "misplaced", "implication"]
+    },
+    "reason": {
+      "type": "string",
+      "description": "Mandatory human rationale for this decision",
+      "minLength": 5,
+      "maxLength": 500
+    },
+    "relocation": {
+      "$ref": "#/$defs/relocation_action"
+    },
+    "supersedes_decision_id": {
+      "type": ["string", "integer", "null"]
+    },
+    "decided_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "$defs": {
+    "issue_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system_slug", "number"],
+      "properties": {
+        "system_slug": {
+          "type": "string",
+          "enum": ["gentle-ai", "engram", "gentle-shell"]
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "relocation_action": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["target_system_slug", "escrow_status"],
+      "properties": {
+        "target_system_slug": {
+          "type": "string",
+          "enum": ["gentle-ai", "engram", "gentle-shell"]
+        },
+        "escrow_status": {
+          "type": "string",
+          "enum": [
+            "home_notified",
+            "claimed_by_target",
+            "transferred",
+            "rejected"
+          ]
+        }
+      }
+    }
+  }
+}

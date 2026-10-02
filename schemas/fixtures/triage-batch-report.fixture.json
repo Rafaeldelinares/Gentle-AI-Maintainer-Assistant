@@ -1,0 +1,79 @@
+{
+  "schema": "gentle-ai.maintainer-assistant.triage-batch-report/v1",
+  "run_id": 1,
+  "created_at": "2026-10-02T01:30:00Z",
+  "summary": {
+    "total_issues": 90,
+    "deterministic_resolved": 35,
+    "llm_evaluated": 55,
+    "band_distribution": {
+      "P0": 3,
+      "P1": 12,
+      "P2": 66,
+      "P3": 9
+    },
+    "cross_system_distribution": {
+      "none": 64,
+      "dependency": 22,
+      "misplaced": 3,
+      "implication": 1
+    }
+  },
+  "inferences": [
+    {
+      "schema": "gentle-ai.maintainer-assistant.triage-inference/v1",
+      "issue_ref": {
+        "system_slug": "gentle-ai",
+        "number": 4823
+      },
+      "source": "deterministic_rule",
+      "rule_name": "rule:feature_request",
+      "model": null,
+      "band": "P2",
+      "confidence": "high",
+      "operational_rationale": "Title prefix feat and enhancement label identify this as a new feature request; classified as P2 per rubric definition.",
+      "reasons": [
+        "Issue proposes opt-in community plugin discovery mechanism",
+        "Categorized under enhancement and feat prefix"
+      ],
+      "citations": [
+        "feat(pi): support opt-in community plugin discovery and installation"
+      ],
+      "cross_system": {
+        "classification": "dependency",
+        "target_system_slug": "gentle-shell",
+        "explanation": "Plugins interact with gentle-shell runtime as consumer dependency"
+      },
+      "border_ambiguity": null,
+      "evaluated_at": "2026-10-02T01:15:00Z"
+    },
+    {
+      "schema": "gentle-ai.maintainer-assistant.triage-inference/v1",
+      "issue_ref": {
+        "system_slug": "gentle-ai",
+        "number": 5102
+      },
+      "source": "llm_judge",
+      "rule_name": null,
+      "model": "deepseek-v4-flash",
+      "band": "P2",
+      "confidence": "medium",
+      "operational_rationale": "Installation fails during component:sdd validation, but an accessible manual configuration workaround is documented in docs/manual-setup.md. Demoted from P1 to P2 per maintainer rule H9.",
+      "reasons": [
+        "OpenCode CodeGraph MCP configuration blocks automated installer",
+        "Documented manual workaround exists allowing user to proceed"
+      ],
+      "citations": [
+        "OpenCode install fails at component:sdd when CodeGraph community tool is selected",
+        "Workaround: manually configure mcp.servers in opencode.json"
+      ],
+      "cross_system": {
+        "classification": "dependency",
+        "target_system_slug": "gentle-shell",
+        "explanation": "CodeGraph tool schema depends on gentle-shell extension contract"
+      },
+      "border_ambiguity": "P1_P2_ambiguity",
+      "evaluated_at": "2026-10-02T01:16:00Z"
+    }
+  ]
+}

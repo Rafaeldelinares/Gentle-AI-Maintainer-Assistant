@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gentle-ai.dev/contracts/maintainer-assistant/v1/schemas/issue-record.schema.json",
+  "title": "Gentle AI Maintainer Assistant - Canonical Issue Record v1",
+  "description": "Standard representation of an ingested issue across gentle-ai, engram, and gentle-shell",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "system_slug",
+    "number",
+    "title",
+    "body",
+    "labels",
+    "state",
+    "author",
+    "created_at",
+    "updated_at",
+    "url",
+    "cross_references"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "gentle-ai.maintainer-assistant.issue-record/v1"
+    },
+    "system_slug": {
+      "type": "string",
+      "enum": ["gentle-ai", "engram", "gentle-shell"]
+    },
+    "number": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "title_prefix": {
+      "type": ["string", "null"]
+    },
+    "body": {
+      "type": "string"
+    },
+    "labels": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "state": {
+      "type": "string",
+      "enum": ["open", "closed"]
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "closed_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "cross_references": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/cross_reference"
+      }
+    }
+  },
+  "$defs": {
+    "cross_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_system_slug", "target_number", "location", "raw"],
+      "properties": {
+        "target_system_slug": {
+          "type": "string",
+          "enum": ["gentle-ai", "engram", "gentle-shell"]
+        },
+        "target_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "location": {
+          "type": "string",
+          "enum": ["title", "body", "comment"]
+        },
+        "raw": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

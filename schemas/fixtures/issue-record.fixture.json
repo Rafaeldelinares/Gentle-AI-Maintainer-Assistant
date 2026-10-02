@@ -1,0 +1,23 @@
+{
+  "schema": "gentle-ai.maintainer-assistant.issue-record/v1",
+  "system_slug": "gentle-ai",
+  "number": 5102,
+  "title": "OpenCode install fails at `component:sdd` when CodeGraph community tool is selected (`mcp.servers` shape blocks gentle-orchestrator injection)",
+  "title_prefix": "bug",
+  "body": "When installing OpenCode with CodeGraph community tool selected, component:sdd validation fails. Workaround: manually configure mcp.servers in opencode.json as documented in docs/manual-setup.md.",
+  "labels": ["type:bug", "status:needs-review"],
+  "state": "open",
+  "author": "Alan-TheGentleman",
+  "created_at": "2026-03-28T14:22:00Z",
+  "updated_at": "2026-03-29T09:10:00Z",
+  "closed_at": null,
+  "url": "https://github.com/Gentleman-Programming/gentle-ai/issues/5102",
+  "cross_references": [
+    {
+      "target_system_slug": "gentle-shell",
+      "target_number": 1540,
+      "location": "body",
+      "raw": "Gentleman-Programming/gentle-shell#1540"
+    }
+  ]
+}

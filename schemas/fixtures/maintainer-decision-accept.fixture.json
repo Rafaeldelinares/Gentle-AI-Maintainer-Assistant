@@ -1,0 +1,15 @@
+{
+  "schema": "gentle-ai.maintainer-assistant.maintainer-decision/v1",
+  "issue_ref": {
+    "system_slug": "gentle-ai",
+    "number": 5102
+  },
+  "actor": "Alan-TheGentleman",
+  "action": "accept",
+  "band": "P2",
+  "cross_system": "dependency",
+  "reason": "Accepted recommendation: the manual workaround is sufficient until the 3.8.0 installer patch lands.",
+  "relocation": null,
+  "supersedes_decision_id": null,
+  "decided_at": "2026-10-02T01:20:00Z"
+}

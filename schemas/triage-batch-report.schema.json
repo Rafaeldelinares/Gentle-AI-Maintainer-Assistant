@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gentle-ai.dev/contracts/maintainer-assistant/v1/schemas/triage-batch-report.schema.json",
+  "title": "Gentle AI Maintainer Assistant - Triage Batch Report v1",
+  "description": "Exported batch report containing summary metrics and individual triage inferences",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "run_id",
+    "created_at",
+    "summary",
+    "inferences"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "gentle-ai.maintainer-assistant.triage-batch-report/v1"
+    },
+    "run_id": {
+      "type": ["integer", "string"]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total_issues",
+        "deterministic_resolved",
+        "llm_evaluated",
+        "band_distribution",
+        "cross_system_distribution"
+      ],
+      "properties": {
+        "total_issues": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "deterministic_resolved": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "llm_evaluated": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "band_distribution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["P0", "P1", "P2", "P3"],
+          "properties": {
+            "P0": { "type": "integer", "minimum": 0 },
+            "P1": { "type": "integer", "minimum": 0 },
+            "P2": { "type": "integer", "minimum": 0 },
+            "P3": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "cross_system_distribution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["none", "dependency", "misplaced", "implication"],
+          "properties": {
+            "none": { "type": "integer", "minimum": 0 },
+            "dependency": { "type": "integer", "minimum": 0 },
+            "misplaced": { "type": "integer", "minimum": 0 },
+            "implication": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "inferences": {
+      "type": "array",
+      "items": {
+        "$ref": "triage-inference.schema.json"
+      }
+    }
+  }
+}

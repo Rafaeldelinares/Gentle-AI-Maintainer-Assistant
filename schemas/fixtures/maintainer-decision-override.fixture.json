@@ -1,0 +1,15 @@
+{
+  "schema": "gentle-ai.maintainer-assistant.maintainer-decision/v1",
+  "issue_ref": {
+    "system_slug": "gentle-ai",
+    "number": 5166
+  },
+  "actor": "Alan-TheGentleman",
+  "action": "override",
+  "band": "P1",
+  "cross_system": "none",
+  "reason": "Overriding candidate P2 to P1: the false CRITICAL blocks review lifecycle and prevents PR delivery across all developers with composite projects.",
+  "relocation": null,
+  "supersedes_decision_id": null,
+  "decided_at": "2026-10-02T01:22:00Z"
+}

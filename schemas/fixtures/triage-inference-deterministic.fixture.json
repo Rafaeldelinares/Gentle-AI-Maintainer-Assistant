@@ -1,0 +1,27 @@
+{
+  "schema": "gentle-ai.maintainer-assistant.triage-inference/v1",
+  "issue_ref": {
+    "system_slug": "gentle-ai",
+    "number": 4823
+  },
+  "source": "deterministic_rule",
+  "rule_name": "rule:feature_request",
+  "model": null,
+  "band": "P2",
+  "confidence": "high",
+  "operational_rationale": "Title prefix feat and enhancement label identify this as a new feature request; classified as P2 per rubric definition.",
+  "reasons": [
+    "Issue proposes opt-in community plugin discovery mechanism",
+    "Categorized under enhancement and feat prefix"
+  ],
+  "citations": [
+    "feat(pi): support opt-in community plugin discovery and installation"
+  ],
+  "cross_system": {
+    "classification": "dependency",
+    "target_system_slug": "gentle-shell",
+    "explanation": "Plugins interact with gentle-shell runtime as consumer dependency"
+  },
+  "border_ambiguity": null,
+  "evaluated_at": "2026-10-02T01:15:00Z"
+}

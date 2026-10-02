@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gentle-ai.dev/contracts/maintainer-assistant/v1/schemas/triage-inference.schema.json",
+  "title": "Gentle AI Maintainer Assistant - Triage Inference v1",
+  "description": "Assistant recommendation output for an issue — strictly inferential, never authoritative",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "issue_ref",
+    "source",
+    "band",
+    "confidence",
+    "operational_rationale",
+    "reasons",
+    "citations",
+    "cross_system",
+    "border_ambiguity",
+    "evaluated_at"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "gentle-ai.maintainer-assistant.triage-inference/v1"
+    },
+    "issue_ref": {
+      "$ref": "#/$defs/issue_ref"
+    },
+    "source": {
+      "type": "string",
+      "enum": ["deterministic_rule", "llm_judge"]
+    },
+    "rule_name": {
+      "type": ["string", "null"],
+      "enum": [
+        null,
+        "rule:feature_request",
+        "rule:docs_chore_question",
+        "rule:silent_data_loss",
+        "rule:hard_crash"
+      ]
+    },
+    "model": {
+      "type": ["string", "null"]
+    },
+    "band": {
+      "type": "string",
+      "enum": ["P0", "P1", "P2", "P3"]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    },
+    "operational_rationale": {
+      "type": "string",
+      "description": "Explainable reason applying the calibrated maintainer policy (e.g., hard blocker with no workaround vs manual workaround exists vs recovers on retry)",
+      "minLength": 5,
+      "maxLength": 500
+    },
+    "reasons": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+      }
+    },
+    "citations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500
+      }
+    },
+    "cross_system": {
+      "$ref": "#/$defs/cross_system_inference"
+    },
+    "border_ambiguity": {
+      "type": ["string", "null"],
+      "enum": [null, "P1_P2_ambiguity", "P2_P3_ambiguity"]
+    },
+    "evaluated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "source": { "const": "deterministic_rule" } }
+      },
+      "then": {
+        "required": ["rule_name"],
+        "properties": {
+          "rule_name": { "type": "string" },
+          "model": { "type": "null" },
+          "confidence": { "const": "high" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "source": { "const": "llm_judge" } }
+      },
+      "then": {
+        "required": ["model"],
+        "properties": {
+          "model": { "type": "string", "minLength": 1 },
+          "rule_name": { "type": "null" }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "issue_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system_slug", "number"],
+      "properties": {
+        "system_slug": {
+          "type": "string",
+          "enum": ["gentle-ai", "engram", "gentle-shell"]
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "cross_system_inference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification", "target_system_slug", "explanation"],
+      "properties": {
+        "classification": {
+          "type": "string",
+          "enum": ["none", "dependency", "misplaced", "implication"]
+        },
+        "target_system_slug": {
+          "type": ["string", "null"],
+          "enum": [null, "gentle-ai", "engram", "gentle-shell"]
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      }
+    }
+  }
+}

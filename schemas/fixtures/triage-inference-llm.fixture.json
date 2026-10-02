@@ -1,0 +1,28 @@
+{
+  "schema": "gentle-ai.maintainer-assistant.triage-inference/v1",
+  "issue_ref": {
+    "system_slug": "gentle-ai",
+    "number": 5102
+  },
+  "source": "llm_judge",
+  "rule_name": null,
+  "model": "deepseek-v4-flash",
+  "band": "P2",
+  "confidence": "medium",
+  "operational_rationale": "Installation fails during component:sdd validation, but an accessible manual configuration workaround is documented in docs/manual-setup.md. Demoted from P1 to P2 per maintainer rule H9.",
+  "reasons": [
+    "OpenCode CodeGraph MCP configuration blocks automated installer",
+    "Documented manual workaround exists allowing user to proceed"
+  ],
+  "citations": [
+    "OpenCode install fails at component:sdd when CodeGraph community tool is selected",
+    "Workaround: manually configure mcp.servers in opencode.json"
+  ],
+  "cross_system": {
+    "classification": "dependency",
+    "target_system_slug": "gentle-shell",
+    "explanation": "CodeGraph tool schema depends on gentle-shell extension contract"
+  },
+  "border_ambiguity": "P1_P2_ambiguity",
+  "evaluated_at": "2026-10-02T01:16:00Z"
+}
