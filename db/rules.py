@@ -265,6 +265,209 @@ def has_hard_signal(text: str) -> bool:
     return has_silent_data_loss(text) or is_hard_crash(text)
 
 
+def _spans(pattern, text, limit=3):
+    """Matched snippets with a little context, for showing the evidence."""
+    out = []
+    for m in pattern.finditer(text or ""):
+        start = max(0, m.start() - 40)
+        end = min(len(text), m.end() + 40)
+        out.append({
+            "match": m.group(0),
+            "context": re.sub(r"\s+", " ", text[start:end]).strip(),
+        })
+        if len(out) >= limit:
+            break
+    return out
+
+
+def decide(row, labels=None, cross_refs=None, include_evidence=False):
+    """
+    Evaluates deterministic triage rules for an issue and returns a structured decision.
+
+    This is the first-class decision port for the engine. Callers obtain band, rule,
+    cross-system classification, human review requirements, the ordered trace of rules
+    considered, and rich evidence (matched spans, negations, predicate states).
+
+    Performance & laziness:
+      Building the rich evidence block (running 10 regex finditer sweeps and extracting
+      contextual spans) is computationally expensive. Because regular triage callers
+      (classify_issue_deterministically, requires_human_review, board card projection)
+      only need the decision fields, `include_evidence` defaults to False.
+      When False, `evidence` in the return dictionary is None.
+      Callers requiring explanation inspection (such as board/explain.py) must pass
+      `include_evidence=True`.
+
+    Determinism invariant: evidence lists and dictionaries are constructed in stable,
+    deterministic order without depending on process-randomized hash sets.
+    """
+    row_dict = dict(row) if hasattr(row, "keys") else (row or {})
+    title = row_dict.get("title") or ""
+    body = row_dict.get("body") or ""
+    prefix = derive_title_prefix(title, row_dict.get("title_prefix") or "")
+    full_text = f"{title}\n{body}"
+    labels_list = list(labels or [])
+    cross_refs_list = list(cross_refs or [])
+
+    # ── 1. CROSS-SYSTEM (from cross_refs) ──
+    cross = "none"
+    if cross_refs_list:
+        foreign_refs = [cr for cr in cross_refs_list if cr.get("target_system_id") != row_dict.get("system_id")]
+        if foreign_refs:
+            cross = "dependency"
+
+    # ── 2. PREDICATE EVALUATIONS ──
+    label_set = {l.lower() for l in labels_list}
+    is_bug = prefix in ("bug", "fix") or "type:bug" in label_set or "bug" in label_set
+    feature_prefix = prefix in EXPLICIT_FEATURE_PREFIXES
+    feature_label = bool(label_set & {"type:feature", "enhancement", "feature"})
+    docs_prefix = prefix in EXPLICIT_DOCS_PREFIXES or prefix in ("refactor", "test", "ci", "style")
+    docs_label_or_header = (
+        bool(label_set & {"type:chore", "documentation", "question", "discussion"})
+        or bool(RE_P3_DOCS.search(title))
+    )
+    docs_predicate = prefix in EXPLICIT_DOCS_PREFIXES or docs_label_or_header
+
+    if include_evidence:
+        p0_fires = has_silent_data_loss(full_text)
+        crash_fires = is_hard_crash(full_text)
+        workaround = has_active_workaround(full_text)
+    elif is_bug:
+        p0_fires = has_silent_data_loss(full_text)
+        crash_fires = is_hard_crash(full_text)
+        workaround = has_active_workaround(full_text) if crash_fires else False
+    else:
+        p0_fires = False
+        crash_fires = False
+        workaround = False
+
+    # ── 3. ORDERED RULE EVALUATION TRACE ──
+    chain = [
+        ("candidato P0",                        RULE_P0_CANDIDATE,                          P0_CANDIDATE_LABEL, is_bug and p0_fires),
+        ("P1 crash sin salida",                 "rule:hard_crash",                          "P1",                is_bug and crash_fires and not workaround),
+        ("P2 crash con workaround (regla H9)",  "rule:crash_with_workaround_demoted_to_p2", "P2",                is_bug and crash_fires and workaround),
+        ("P3 prefijo explícito de docs/tarea",  "rule:docs_chore_question",                 "P3",                docs_prefix),
+        ("P2 prefijo explícito de feature",     "rule:feature_request",                     "P2",                feature_prefix),
+        ("P2 etiqueta de feature",              "rule:feature_request",                     "P2",                feature_label),
+        ("P3 etiqueta o encabezado de docs",    "rule:docs_chore_question",                 "P3",                docs_predicate),
+    ]
+
+    winner = next((c for c in chain if c[3]), None)
+    winner_name = winner[0] if winner else None
+
+    if winner:
+        band = winner[2]
+        rule = winner[1]
+        decided_by = winner[0]
+    else:
+        band = None
+        rule = None
+        decided_by = "(ninguna regla: zona gris)"
+
+    rules_considered = []
+    for name, r_id, b_id, matched in chain:
+        rules_considered.append({
+            "name": name,
+            "rule": r_id,
+            "band": b_id,
+            "matched": matched,
+            "won": matched and name == winner_name,
+        })
+
+    # ── 4. HUMAN REVIEW REQUIREMENT (Rule H-review / DECISIONS.md D-004) ──
+    req_review = False
+    review_reason = None
+    if band in ("P2", "P3"):
+        if include_evidence or is_bug:
+            if p0_fires:
+                req_review = True
+                review_reason = "hard_signal_under_prefix: silent data loss under a non-bug prefix"
+            elif crash_fires:
+                req_review = True
+                review_reason = "hard_signal_under_prefix: crash under a non-bug prefix"
+        else:
+            if has_silent_data_loss(full_text):
+                req_review = True
+                review_reason = "hard_signal_under_prefix: silent data loss under a non-bug prefix"
+            elif is_hard_crash(full_text):
+                req_review = True
+                review_reason = "hard_signal_under_prefix: crash under a non-bug prefix"
+
+    # ── 5. EVIDENCE SUPERSET (lazy: only when explicitly requested) ──
+    evidence = None
+    if include_evidence:
+        p0_matches = _spans(RE_P0_SILENT_BASE, full_text)
+        p0_negations = _spans(RE_DATA_LOSS_NEGATION, full_text) + _spans(RE_SILENT_NEGATION, full_text)
+        p0_fix_desc = _spans(RE_FIX_DESCRIPTION, full_text)
+        crash_matches = _spans(RE_P1_CRASH_CORE, full_text)
+        crash_handled = _spans(RE_CRASH_HANDLED, full_text)
+        deadlocks = _spans(RE_DEADLOCK_BASE, full_text)
+        deadlock_neg = _spans(RE_DEADLOCK_NEGATION, full_text)
+        concurrency = _spans(RE_CONCURRENCY_CONTEXT, full_text)
+        workaround_pos = _spans(RE_WORKAROUND_POSITIVE, full_text)
+        workaround_neg = _spans(RE_WORKAROUND_NEGATIVE, full_text)
+
+        blocked_by = {
+            "candidato P0": p0_negations + p0_fix_desc,
+            "P1 crash sin salida": crash_handled + deadlock_neg,
+            "P2 crash con workaround (regla H9)": workaround_neg,
+        }
+
+        prefix_str = prefix or "(ninguno)"
+        labels_str = str(labels_list) if labels_list else "[]"
+        p0_m = [s["match"] for s in p0_matches] or "ninguna"
+        cr_m = [s["match"] for s in crash_matches] or "ninguno"
+        dl_m = [s["match"] for s in deadlocks] or "ninguno"
+        wa_m = [s["match"] for s in workaround_pos] or "ninguno"
+
+        details = {
+            "compuerta de bug": f"prefijo='{prefix_str}' etiquetas={labels_str}",
+            "candidato P0": f"coincidencias={p0_m}",
+            "P1 crash sin salida": f"crash={cr_m} deadlock={dl_m}",
+            "P2 crash con workaround (regla H9)": f"workaround={wa_m}",
+            "P3 prefijo explícito de docs/tarea": f"prefijo='{prefix_str}'",
+            "P2 prefijo explícito de feature": f"prefijo='{prefix_str}'",
+            "P2 etiqueta de feature": f"etiquetas={labels_str}",
+            "P3 etiqueta o encabezado de docs": f"etiquetas={labels_str} prefijo='{prefix_str}'",
+        }
+
+        evidence = {
+            "derived_prefix": prefix,
+            "is_bug": is_bug,
+            "has_silent_data_loss": p0_fires,
+            "is_hard_crash": crash_fires,
+            "has_active_workaround": workaround,
+            "has_hard_signal": p0_fires or crash_fires,
+            "feature_prefix": feature_prefix,
+            "feature_label": feature_label,
+            "docs_prefix": docs_prefix,
+            "docs_label_or_header": docs_label_or_header,
+            "docs_predicate": docs_predicate,
+            "p0_matches": p0_matches,
+            "p0_negations": p0_negations,
+            "p0_fix_desc": p0_fix_desc,
+            "crash_matches": crash_matches,
+            "crash_handled": crash_handled,
+            "deadlocks": deadlocks,
+            "deadlock_neg": deadlock_neg,
+            "concurrency": concurrency,
+            "workaround_pos": workaround_pos,
+            "workaround_neg": workaround_neg,
+            "blocked_by": blocked_by,
+            "details": details,
+        }
+
+    return {
+        "band": band,
+        "rule": rule,
+        "cross": cross,
+        "requires_human_review": req_review,
+        "review_reason": review_reason,
+        "decided_by": decided_by,
+        "rules_considered": rules_considered,
+        "evidence": evidence,
+    }
+
+
 def classify_issue_deterministically(row, labels, cross_refs):
     """
     Returns (band, cross, rule_name) or (None, cross, None) if indeterminate.
@@ -273,56 +476,8 @@ def classify_issue_deterministically(row, labels, cross_refs):
     decision. A hard signal under a non-bug prefix does NOT change the band; use
     requires_human_review() to detect that case.
     """
-    row_dict = dict(row) if hasattr(row, "keys") else (row or {})
-    title = row_dict.get("title") or ""
-    body = row_dict.get("body") or ""
-    prefix = derive_title_prefix(title, row_dict.get("title_prefix") or "")
-    full_text = f"{title}\n{body}"
-
-    # ── 1. CROSS-SYSTEM (from cross_refs) ──
-    cross = "none"
-    if cross_refs:
-        foreign_refs = [cr for cr in cross_refs if cr.get("target_system_id") != row_dict.get("system_id")]
-        if foreign_refs:
-            cross = "dependency"
-
-    # ── 2. BAND DETERMINISM ──
-    label_set = {l.lower() for l in labels}
-    is_bug = prefix in ("bug", "fix") or "type:bug" in label_set or "bug" in label_set
-
-    # Check candidate P0: silent data loss / corruption
-    if is_bug and has_silent_data_loss(full_text):
-        return P0_CANDIDATE_LABEL, cross, RULE_P0_CANDIDATE
-
-    # Check P1 vs P2 (Rule H9 & H10): hard crash, demoted when a workaround exists
-    if is_bug and is_hard_crash(full_text):
-        if has_active_workaround(full_text):
-            return "P2", cross, "rule:crash_with_workaround_demoted_to_p2"
-        return "P1", cross, "rule:hard_crash"
-
-    # Explicit conventional prefix wins over a conflicting type label.
-    # (Fixes the audit finding: a `docs:` issue with an `enhancement` label was P2.)
-    if prefix in EXPLICIT_DOCS_PREFIXES or prefix in ("refactor", "test", "ci", "style"):
-        return "P3", cross, "rule:docs_chore_question"
-
-    if prefix in EXPLICIT_FEATURE_PREFIXES:
-        return "P2", cross, "rule:feature_request"
-
-    # Label-only fallbacks
-    if "type:feature" in label_set or "enhancement" in label_set or "feature" in label_set:
-        return "P2", cross, "rule:feature_request"
-
-    if (
-        "type:chore" in label_set
-        or "documentation" in label_set
-        or "question" in label_set
-        or "discussion" in label_set
-        or RE_P3_DOCS.search(title)
-    ):
-        return "P3", cross, "rule:docs_chore_question"
-
-    # Indeterminate — must fall through to LLM / human triage
-    return None, cross, None
+    decision = decide(row, labels, cross_refs)
+    return decision["band"], decision["cross"], decision["rule"]
 
 
 def requires_human_review(row, labels, cross_refs):
@@ -333,16 +488,8 @@ def requires_human_review(row, labels, cross_refs):
     signal. The band is intentionally NOT changed (never auto-promote a `feat:` to
     P1); the maintainer is asked to look. See DECISIONS.md D-004.
     """
-    row_dict = dict(row) if hasattr(row, "keys") else (row or {})
-    band, cross, rule = classify_issue_deterministically(row_dict, labels, cross_refs)
-    if band not in ("P2", "P3"):
-        return False, None
-    text = f"{row_dict.get('title') or ''}\n{row_dict.get('body') or ''}"
-    if has_silent_data_loss(text):
-        return True, "hard_signal_under_prefix: silent data loss under a non-bug prefix"
-    if is_hard_crash(text):
-        return True, "hard_signal_under_prefix: crash under a non-bug prefix"
-    return False, None
+    decision = decide(row, labels, cross_refs)
+    return decision["requires_human_review"], decision["review_reason"]
 
 
 def run_snapshot_evaluation(snapshot_data):

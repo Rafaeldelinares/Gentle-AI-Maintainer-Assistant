@@ -39,6 +39,7 @@ sys.path.insert(0, str(Path(__file__).parent / "db"))
 from rules import (
     classify_issue_deterministically,
     requires_human_review,
+    decide,
     has_active_workaround,
     has_silent_data_loss,
     is_hard_crash,
@@ -433,6 +434,38 @@ def run_tests():
     print("\n  Dynamic rule histogram over issues.json (recomputed, not frozen):")
     for rule, cnt in sorted(first_pass.items(), key=lambda x: x[1], reverse=True):
         print(f"    - {rule:44s}: {cnt:4d}")
+
+    # ─────────────────────────────────────────────────────────────────
+    # 15. DECISION PORT MUTUAL CONSISTENCY (decide vs wrappers)
+    # ─────────────────────────────────────────────────────────────────
+    print("\n── 15. DECISION PORT MUTUAL CONSISTENCY (decide vs wrappers across snapshot) ──")
+    mismatches = []
+    for item in snapshot_issues:
+        labels = item.get("labels", [])
+        xrefs = item.get("cross_refs", [])
+        d = decide(item, labels, xrefs)
+        b, c, r = classify_issue_deterministically(item, labels, xrefs)
+        flag, reason = requires_human_review(item, labels, xrefs)
+        if (d["band"], d["cross"], d["rule"]) != (b, c, r) or (d["requires_human_review"], d["review_reason"]) != (flag, reason):
+            mismatches.append(f"{item.get('slug')}#{item.get('number')}")
+
+    assert_test(
+        not mismatches,
+        f"decide() and both wrappers agree for all {len(snapshot_issues)} snapshot issues (all three views mutually consistent)",
+    )
+
+    sample_issue = snapshot_issues[0]
+    d_default = decide(sample_issue)
+    assert_test(d_default["evidence"] is None, "decide() defaults include_evidence to False (evidence is None)")
+
+    d_explicit_false = decide(sample_issue, include_evidence=False)
+    assert_test(d_explicit_false["evidence"] is None, "decide(include_evidence=False) omits evidence block")
+
+    d_explicit_true = decide(sample_issue, include_evidence=True)
+    assert_test(
+        d_explicit_true["evidence"] is not None and "details" in d_explicit_true["evidence"],
+        "decide(include_evidence=True) builds full evidence block",
+    )
 
     print("\n────────────────────────────────────────────────────────────────────")
     print(f" FINAL TEST RESULT: {passed}/{total} tests passed successfully.")

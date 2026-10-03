@@ -1,0 +1,295 @@
+{
+  "digest": "2170d7307bfd8ddc129824687c7d6e84951f05c25721c62e03ac201b5b20c7a7",
+  "sample": {
+    "gentle-ai#5007": {
+      "derived_prefix": "bug",
+      "is_bug": true,
+      "band": null,
+      "rule": null,
+      "suggested_column": "falta_info",
+      "review_flag": false,
+      "review_reason": null,
+      "missing_fields": [
+        "🔄 Steps to Reproduce",
+        "Gentle AI Version",
+        "Operating System",
+        "AI Agent / Client",
+        "📋 Affected Area"
+      ],
+      "required_total": 8,
+      "missing_severity": "high",
+      "decided_by": "(ninguna regla: zona gris)",
+      "checks": [
+        {
+          "name": "compuerta de bug",
+          "question": "¿es un bug? (prefijo bug:/fix: o etiqueta de bug)",
+          "matched": true,
+          "won": false,
+          "detail": "prefijo='bug' etiquetas=[]",
+          "note": "No decide una banda: habilita o bloquea P0/P1. Un feat: con señal dura no sube: se marca «mirada humana»."
+        },
+        {
+          "name": "candidato P0",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "coincidencias=['data loss']",
+          "blocked_by": [
+            {
+              "match": "No workaround data loss",
+              "context": "profile `agent` ### 🛟 State preserved No workaround data loss: the local store is intact and the CLI"
+            }
+          ],
+          "note": "Una negación («no data loss») o la descripción de un arreglo cancelan el disparo."
+        },
+        {
+          "name": "P1 crash sin salida",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "crash=ninguno deadlock=ninguno",
+          "blocked_by": [],
+          "note": "Un deadlock solo cuenta con contexto de proceso o hilo. «not a crash» y «crash-safe» lo cancelan."
+        },
+        {
+          "name": "P2 crash con workaround (regla H9)",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "workaround=['workaround']",
+          "blocked_by": [
+            {
+              "match": "No workaround",
+              "context": "profile `agent` ### 🛟 State preserved No workaround data loss: the local store is intact an"
+            }
+          ],
+          "note": "Si existe salida, el crash baja a P2. «no configuration can work around it» NO cuenta como workaround: queda P1."
+        },
+        {
+          "name": "P3 prefijo explícito de docs/tarea",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "prefijo='bug'",
+          "blocked_by": [],
+          "note": "El prefijo explícito del título GANA sobre una etiqueta que lo contradiga."
+        },
+        {
+          "name": "P2 prefijo explícito de feature",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "prefijo='bug'",
+          "blocked_by": [],
+          "note": ""
+        },
+        {
+          "name": "P2 etiqueta de feature",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "etiquetas=[]",
+          "blocked_by": [],
+          "note": ""
+        },
+        {
+          "name": "P3 etiqueta o encabezado de docs",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "etiquetas=[] prefijo='bug'",
+          "blocked_by": [],
+          "note": "Última regla: si nada anterior coincidió."
+        }
+      ],
+      "human_note": "Esto es lo que el motor decidió, no lo que es cierto. El veredicto lo escribe una persona."
+    },
+    "gentle-ai#4809": {
+      "derived_prefix": "bug",
+      "is_bug": true,
+      "band": "P2",
+      "rule": "rule:crash_with_workaround_demoted_to_p2",
+      "suggested_column": "falta_info",
+      "review_flag": true,
+      "review_reason": "hard_signal_under_prefix: crash under a non-bug prefix",
+      "missing_fields": [
+        "📝 Bug Description",
+        "✅ Expected Behavior",
+        "❌ Actual Behavior",
+        "Gentle AI Version",
+        "Operating System",
+        "AI Agent / Client",
+        "📋 Affected Area"
+      ],
+      "required_total": 8,
+      "missing_severity": "critical",
+      "decided_by": "P2 crash con workaround (regla H9)",
+      "checks": [
+        {
+          "name": "compuerta de bug",
+          "question": "¿es un bug? (prefijo bug:/fix: o etiqueta de bug)",
+          "matched": true,
+          "won": false,
+          "detail": "prefijo='bug' etiquetas=['type:bug']",
+          "note": "No decide una banda: habilita o bloquea P0/P1. Un feat: con señal dura no sube: se marca «mirada humana»."
+        },
+        {
+          "name": "candidato P0",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "coincidencias=ninguna",
+          "blocked_by": [],
+          "note": "Una negación («no data loss») o la descripción de un arreglo cancelan el disparo."
+        },
+        {
+          "name": "P1 crash sin salida",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "crash=['fails to start', 'refuses to start'] deadlock=ninguno",
+          "blocked_by": [],
+          "note": "Un deadlock solo cuenta con contexto de proceso o hilo. «not a crash» y «crash-safe» lo cancelan."
+        },
+        {
+          "name": "P2 crash con workaround (regla H9)",
+          "question": "",
+          "matched": true,
+          "won": true,
+          "detail": "workaround=['Workaround']",
+          "blocked_by": [],
+          "note": "Si existe salida, el crash baja a P2. «no configuration can work around it» NO cuenta como workaround: queda P1."
+        },
+        {
+          "name": "P3 prefijo explícito de docs/tarea",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "prefijo='bug'",
+          "blocked_by": [],
+          "note": "El prefijo explícito del título GANA sobre una etiqueta que lo contradiga."
+        },
+        {
+          "name": "P2 prefijo explícito de feature",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "prefijo='bug'",
+          "blocked_by": [],
+          "note": ""
+        },
+        {
+          "name": "P2 etiqueta de feature",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "etiquetas=['type:bug']",
+          "blocked_by": [],
+          "note": ""
+        },
+        {
+          "name": "P3 etiqueta o encabezado de docs",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "etiquetas=['type:bug'] prefijo='bug'",
+          "blocked_by": [],
+          "note": "Última regla: si nada anterior coincidió."
+        }
+      ],
+      "human_note": "Esto es lo que el motor decidió, no lo que es cierto. El veredicto lo escribe una persona."
+    },
+    "gentle-ai#4807": {
+      "derived_prefix": "bug",
+      "is_bug": true,
+      "band": "P1",
+      "rule": "rule:hard_crash",
+      "suggested_column": null,
+      "review_flag": false,
+      "review_reason": null,
+      "missing_fields": [],
+      "required_total": 8,
+      "missing_severity": "none",
+      "decided_by": "P1 crash sin salida",
+      "checks": [
+        {
+          "name": "compuerta de bug",
+          "question": "¿es un bug? (prefijo bug:/fix: o etiqueta de bug)",
+          "matched": true,
+          "won": false,
+          "detail": "prefijo='bug' etiquetas=['bug', 'status:needs-review']",
+          "note": "No decide una banda: habilita o bloquea P0/P1. Un feat: con señal dura no sube: se marca «mirada humana»."
+        },
+        {
+          "name": "candidato P0",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "coincidencias=ninguna",
+          "blocked_by": [],
+          "note": "Una negación («no data loss») o la descripción de un arreglo cancelan el disparo."
+        },
+        {
+          "name": "P1 crash sin salida",
+          "question": "",
+          "matched": true,
+          "won": true,
+          "detail": "crash=['out of memory'] deadlock=['deadlock']",
+          "blocked_by": [
+            {
+              "match": "not a deadlock",
+              "context": "instead of hanging. It is a fork bomb, not a deadlock. Measured on one machine: 504 python.ex"
+            }
+          ],
+          "note": "Un deadlock solo cuenta con contexto de proceso o hilo. «not a crash» y «crash-safe» lo cancelan."
+        },
+        {
+          "name": "P2 crash con workaround (regla H9)",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "workaround=ninguno",
+          "blocked_by": [],
+          "note": "Si existe salida, el crash baja a P2. «no configuration can work around it» NO cuenta como workaround: queda P1."
+        },
+        {
+          "name": "P3 prefijo explícito de docs/tarea",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "prefijo='bug'",
+          "blocked_by": [],
+          "note": "El prefijo explícito del título GANA sobre una etiqueta que lo contradiga."
+        },
+        {
+          "name": "P2 prefijo explícito de feature",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "prefijo='bug'",
+          "blocked_by": [],
+          "note": ""
+        },
+        {
+          "name": "P2 etiqueta de feature",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "etiquetas=['bug', 'status:needs-review']",
+          "blocked_by": [],
+          "note": ""
+        },
+        {
+          "name": "P3 etiqueta o encabezado de docs",
+          "question": "",
+          "matched": false,
+          "won": false,
+          "detail": "etiquetas=['bug', 'status:needs-review'] prefijo='bug'",
+          "blocked_by": [],
+          "note": "Última regla: si nada anterior coincidió."
+        }
+      ],
+      "human_note": "Esto es lo que el motor decidió, no lo que es cierto. El veredicto lo escribe una persona."
+    }
+  }
+}

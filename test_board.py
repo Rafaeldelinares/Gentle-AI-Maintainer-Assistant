@@ -14,7 +14,9 @@ Verifies the governance rules, not just the happy path:
   python3 test_board.py
 """
 
+import hashlib
 import json
+import re
 import sqlite3
 import sys
 import tempfile
@@ -187,6 +189,52 @@ def run():
         if (r["band"], r["rule"]) != (b, rule):
             desacuerdos.append((it["slug"], it["number"], r["band"], b))
     check(not desacuerdos, f"explain() coincide con el motor en 400 issues (desacuerdos: {desacuerdos[:3]})")
+
+    # 3f. golden fixture digest and 3-issue sample match exactly
+    golden_path = ROOT / "board" / "fixtures" / "explain-golden.json"
+    with open(golden_path, "r", encoding="utf-8") as fh:
+        golden = json.load(fh)
+
+    results_400 = [
+        explain_mod.explain(
+            it.get("title") or "",
+            it.get("body") or "",
+            it.get("title_prefix") or "",
+            it.get("labels") or [],
+            it["slug"]
+        )
+        for it in todos[:400]
+    ]
+    serialized = json.dumps(results_400, sort_keys=True, ensure_ascii=False)
+    computed_digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+    check(computed_digest == golden["digest"],
+          f"explain() golden fixture digest coincide ({computed_digest[:16]}…)")
+
+    by_ref = {it["slug"] + "#" + str(it["number"]): it for it in todos}
+    sample_mismatches = []
+    for ref, expected in golden["sample"].items():
+        it = by_ref.get(ref)
+        if not it:
+            sample_mismatches.append(f"{ref} missing")
+            continue
+        actual = explain_mod.explain(
+            it.get("title") or "",
+            it.get("body") or "",
+            it.get("title_prefix") or "",
+            it.get("labels") or [],
+            it["slug"]
+        )
+        actual_output = {k: v for k, v in actual.items() if k != "input"}
+        if actual_output != expected:
+            sample_mismatches.append(ref)
+    check(not sample_mismatches and len(golden["sample"]) == 3,
+          f"los 3 casos de muestra del golden fixture coinciden exactamente (desacuerdos: {sample_mismatches})")
+
+    # 3g. structural assertion: board/explain.py does not import or reference any RE_* or EXPLICIT_*
+    explain_source = (ROOT / "board" / "explain.py").read_text(encoding="utf-8")
+    leaked_internals = re.findall(r"\b(?:RE_[A-Z0-9_]+|EXPLICIT_[A-Z0-9_]+)\b", explain_source)
+    check(not leaked_internals,
+          f"board/explain.py no importa ni referencia internals RE_* ni EXPLICIT_* (encontrados: {leaked_internals})")
 
     # 3d. el sistema NO aprende de las decisiones humanas (respuesta verificable)
     # Sobre el MISMO snapshot: una base sin decisiones y otra con 40 movimientos y 40
