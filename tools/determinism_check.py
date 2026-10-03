@@ -44,6 +44,8 @@ MODULES = [
 ]
 
 SEEDS = ["1", "7"]
+# A gate that can hang is not a gate: every child process gets a hard ceiling.
+SUBPROCESS_TIMEOUT_SECONDS = 600
 
 BOARD_PROJECTION_SNIPPET = """
 import hashlib, json, sys, tempfile
@@ -88,13 +90,27 @@ sys.stdout.write(h.hexdigest())
 """
 
 
+def run_bounded(command, env, failure_message):
+    """Run a child process with a hard ceiling, so the gate can never hang.
+
+    The snippet takes about 4 s; the ceiling is deliberately generous. Without
+    it, a hang inside any child would block this script and verify_all with no
+    automatic recovery, which was a real review finding.
+    """
+    try:
+        return subprocess.run(command, capture_output=True, text=True, env=env,
+                              timeout=SUBPROCESS_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        raise SystemExit(f"child process timed out after {SUBPROCESS_TIMEOUT_SECONDS}s: {failure_message}")
+
+
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def run_once(module, report, seed):
     env = dict(os.environ, PYTHONHASHSEED=seed)
-    result = subprocess.run([sys.executable, str(module)], capture_output=True, text=True, env=env)
+    result = run_bounded([sys.executable, str(module)], env, f"{module.name} failed with PYTHONHASHSEED={seed}")
     if result.returncode != 0:
         sys.stderr.write(result.stderr)
         raise SystemExit(f"{module.name} failed with PYTHONHASHSEED={seed}")
@@ -105,7 +121,7 @@ def board_projection_digest(seed):
     """Digest of everything the board derives from the snapshot (no human decisions)."""
     env = dict(os.environ, PYTHONHASHSEED=seed)
     code = BOARD_PROJECTION_SNIPPET % (str(ROOT), str(ROOT))
-    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
+    result = run_bounded([sys.executable, "-c", code], env, f"board projection failed with PYTHONHASHSEED={seed}")
     if result.returncode != 0:
         sys.stderr.write(result.stderr)
         raise SystemExit(f"board projection failed with PYTHONHASHSEED={seed}")
@@ -114,15 +130,9 @@ def board_projection_digest(seed):
 
 def engine_decision_digest(seed):
     """Digest of the engine structured decision contract (decide() with evidence for first 400 issues)."""
-    timeout_seconds = 600  # this gate must never hang; the snippet itself runs in about 4 s
     env = dict(os.environ, PYTHONHASHSEED=seed)
     code = ENGINE_DECISION_SNIPPET % (str(ROOT), str(ROOT))
-    try:
-        result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
-                                env=env, timeout=timeout_seconds)
-    except subprocess.TimeoutExpired:
-        raise SystemExit(f"engine decision check timed out after {timeout_seconds}s "
-                         f"with PYTHONHASHSEED={seed}")
+    result = run_bounded([sys.executable, "-c", code], env, f"engine decision check failed with PYTHONHASHSEED={seed}")
     if result.returncode != 0:
         sys.stderr.write(result.stderr)
         raise SystemExit(f"engine decision check failed with PYTHONHASHSEED={seed}")
