@@ -18,10 +18,14 @@ THE CLAIM CONVENTION
 --------------------
 A count claim is written so that a machine can read it:
 
-    <subject marker> → N/N
+    <subject marker> → N/N        or        <subject marker> (N/N)
 
-for example ``python3 test_rules.py`` → 129/129, or ``--full`` → 11/11. The arrow is what
-makes the claim unambiguous, and only claims in that form are checked.
+for example ``python3 test_rules.py`` → 129/129, or ``--full`` → 11/11. The arrow — or the
+parenthesis — is what makes the claim unambiguous, and only claims carrying one are checked.
+
+The marker may be part of a longer token, because the natural way to write a suite claim puts
+it inside a path. That detail is not cosmetic: without it this guard checked only the gate
+counts and silently missed the suite counts, which are precisely the ones that drifted twice.
 
 How this design was reached, recorded because the dead ends matter
 -----------------------------------------------------------------
@@ -61,33 +65,43 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Subject markers, most specific first so that a nested marker never wins.
+# A gate that can hang is not a gate. Every child gets a hard ceiling; the suites take about
+# a second and the contract validator a fraction of one.
+TIMEOUT_SECONDS = 300
+
+# Subject markers as patterns, most specific first so a nested one never wins. The suffix is
+# optional because the natural way to write a suite claim puts the marker inside a path:
+# '`python3 test_rules.py` → 129/129'. Without that, this guard covered only the gate counts
+# and missed the suite counts -- which are the ones that actually drifted twice.
 MARKERS = (
-    ("sin `--full`", "gate fast"),
-    ("sin --full", "gate fast"),
-    ("without --full", "gate fast"),
-    ("no --full", "gate fast"),
-    ("con `--full`", "gate full"),
-    ("con --full", "gate full"),
-    ("with --full", "gate full"),
-    ("`--full`", "gate full"),
-    ("--full", "gate full"),
-    ("test_rules", "rule suite"),
-    ("rule suite", "rule suite"),
-    ("rules suite", "rule suite"),
-    ("test_board", "board suite"),
-    ("board domain", "board suite"),
-    ("schemas", "contracts"),
-    ("contract tests", "contracts"),
-    ("verify_all", "gate fast"),
+    (r"sin\s+`?--full`?", "gate fast"),
+    (r"without\s+--full", "gate fast"),
+    (r"no\s+--full", "gate fast"),
+    (r"con\s+`?--full`?", "gate full"),
+    (r"with\s+--full", "gate full"),
+    (r"`--full`", "gate full"),
+    (r"--full", "gate full"),
+    (r"test_rules(?:\.py)?", "rule suite"),
+    (r"rules?\s+suite", "rule suite"),
+    (r"test_board(?:\.py)?", "board suite"),
+    (r"board\s+domain", "board suite"),
+    (r"schemas(?:/validate\.py)?", "contracts"),
+    (r"contract\s+tests", "contracts"),
+    (r"verify_all(?:\.py)?", "gate fast"),
 )
 
-# marker, then an arrow/equals/colon, then the count — nothing else in between.
-CLAIM = re.compile(r"^[\s`*]*[→=:][\s`*]*(\d+)\s*/\s*(\d+)")
+# The binding that makes a claim machine-readable: an arrow/equals/colon, or a parenthesis.
+CLAIM = re.compile(r"^[\s`*]*(?:[→=:][\s`*]*|\([\s`*]*)(\d+)\s*/\s*(\d+)")
 
 
 def run_capture(cmd):
-    return subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True)
+    try:
+        return subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True,
+                              timeout=TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        raise SystemExit(
+            f"child process timed out after {TIMEOUT_SECONDS}s: {' '.join(str(c) for c in cmd)}"
+        )
 
 
 def parse_ratio(text, marker):
@@ -169,18 +183,13 @@ def tracked_documents():
 def claims_on_line(line):
     """Yield (subject, position, n, m) for every marker-bound claim on this line.
 
-    A marker nested inside a longer marker is dropped, so the `--full` inside `sin --full`
-    cannot compete for the claim that `sin --full` governs.
+    A marker match nested inside a longer one is dropped, so the `--full` inside
+    `sin --full` cannot compete for the claim that `sin --full` governs.
     """
     found = []
-    for marker, subject in MARKERS:
-        pos = 0
-        while True:
-            at = line.find(marker, pos)
-            if at == -1:
-                break
-            pos = at + 1
-            found.append((at, at + len(marker), subject))
+    for pattern, subject in MARKERS:
+        for match in re.finditer(pattern, line):
+            found.append((match.start(), match.end(), subject))
     kept = [
         f
         for f in found
@@ -214,6 +223,7 @@ def main():
 
     checked = 0
     problems = []
+    unverifiable = []
 
     for name in documents:
         path = ROOT / name
@@ -223,11 +233,20 @@ def main():
             for subject, _at, n, m in claims_on_line(line):
                 checked += 1
                 if n != m:
-                    problems.append((name, lineno, f"{subject} → {n}/{m}", f"is not a matched pair"))
+                    problems.append((name, lineno, f"{subject} → {n}/{m}", "is not a matched pair"))
+                elif subject not in truth:
+                    # e.g. the contract validator cannot run without .venv. The gate skips that
+                    # step in the same situation, so these claims are reported, not failed —
+                    # but never silently passed.
+                    unverifiable.append((name, lineno, f"{subject} → {n}/{m}"))
                 elif n != truth[subject]:
                     problems.append((name, lineno, f"{subject} → {n}/{m}", f"the real value is {truth[subject]}/{truth[subject]}"))
 
     print(f"   claims in the canonical form: {checked}")
+    if unverifiable:
+        print(f"   ⚠ {len(unverifiable)} claim(s) could not be verified: no measurement available")
+        for name, lineno, claim in sorted(unverifiable):
+            print(f"      {name}:{lineno}  {claim}")
     if not checked:
         print("   ⚠ no claim was found in the canonical form; the convention is `<marker> → N/N`")
         return 0
