@@ -194,8 +194,8 @@ Nada de esto está hecho. Se lista para que no se confunda con lo entregado.
 | **Propuestas de regla desde los veredictos** | no implementado | falta la pieza que convierte tus contra-veredictos en un reporte accionable: «esta regla matchea de más en estos 12 casos». Sin eso, cambiar una regla depende de que alguien note el patrón a mano |
 | **Módulo A: calidad, no sólo presencia** | parcial | hoy mide si el campo **está**, no si está **bien escrito**. Un reporte con los 8 campos en dos palabras cada uno pasa el chequeo |
 | **Enlaces cruzados: adjudicación** | parcial | se proponen 15 enlaces explícitos que resuelven; el resto son menciones en prosa que requieren criterio humano |
-| **Revisión nativa del tablero** | **sin cerrar** | el ciclo de 4 lentes encontró 5 fallas críticas, todas corregidas, pero la validación dirigida quedó bloqueada. El candidato cambió después, así que hay que rehacerla |
-| **Commit del trabajo actual** | pendiente | todo vive en el árbol de trabajo. Hasta que se commitee, un tercero no puede reproducir nada de esto |
+| **Revisión nativa del tablero** | **sin cerrar** | el ciclo de 4 lentes encontró 5 fallas críticas, todas corregidas. La validación dirigida **sí funciona**: se cerró una el 2026-10-03 (D-028, diagnóstico corregido). Lo que sigue abierto es la línea que se detuvo por un rechazo hoy considerado intermitente |
+| **Publicación del trabajo actual** | commiteado, **sin pushear** | el árbol está limpio y todo está commiteado (39 commits, **8 de ellos sin pushear**). Hasta que se pusheen, un tercero no puede reproducirlo desde GitHub |
 | **`REPORT.md` para maintainers** | no implementado | informe acotado a 15 ítems por sección, cada uno con `verificado_por_humano: no` |
 | **Modo sombra** | no implementado | calcular prioridad sugerida sin mostrarla ni aplicarla, para comparar contra las decisiones humanas |
 

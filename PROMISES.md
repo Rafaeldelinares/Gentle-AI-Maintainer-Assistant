@@ -96,8 +96,8 @@ Last verified against commit `HEAD` (`git rev-parse --short HEAD`) by running ev
 
 ---
 
-| P-68 | "Every unit of this delivery passed native review" | `STATUS.md` states the exact state per unit | **sin evidencia (parcial)** | **Not true and not claimed.** C1a's review is open with 4 lenses pending; one unit's 4 lenses ran and produced a CRITICAL that was corrected, but its **targeted validation is pending** (D-028, facade defect); the remaining units are committed and not yet reviewed |
-| P-69 | "No unit closed a review it did not close" | `DECISIONS.md` D-028; no figure or claim in this repo asserts a completed validation | **cumplida** | The word used everywhere is **pendiente** |
+| P-68 | "Every unit of this delivery passed native review" | `STATUS.md` states the exact state per unit | **parcial** | **Not true as a whole, and the document says so per unit.** Six units closed with native review and a burned acknowledgement (`6be5093`, `c97874e`, the D-030 pair, `4d0de6b`, and the guard pair). What does NOT have closure: C1a is **parked** with 4 lenses' findings unread; C3b stopped terminally on an intermittent validator rejection; and C1b, C2 and C3a are not reviewable on their own because the candidate for a range review is `baseRef..HEAD` (D-027) |
+| P-69 | "No unit closed a review it did not close" | `DECISIONS.md` D-028; burned acknowledgements with evidence `gentle-ai.review-acknowledged/v1` | **cumplida** | Now backed by a real closure: a targeted validation ran and its review was acknowledged and burned on 2026-10-03. Where a line did not close, the document says stopped or parked, never closed |
 
 ## 6. Honest summary
 

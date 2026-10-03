@@ -47,7 +47,7 @@ ellos desde acá.
 | # | Riesgo | Estado real | Vía de cierre |
 | --- | --- | --- | --- |
 | 1 | **Hallazgos sellados de C1a.** `review-7cb7f5fd9a7b5c39` tiene 4 lentes corridas, con hallazgos **producidos y NO LEÍDOS** sobre `board/core.py`, dentro del almacén nativo del proveedor. | Perdidos mientras no los recupere el host. | **Ninguna desde acá.** `external.authorize_recovery` no es una operación del canal de captura, y `recover` exige valores nativos no derivables (D-028). |
-| 2 | **Validación dirigida sin cierre.** La corrección de las contradicciones de recuentos está aplicada y verificada por tests, pero el slot `provider_targeted_validator` no se puede entregar desde la herramienta. | **pendiente**, no cerrada. | Reportar a `gentle-ai` con la reproducción (D-028). |
+| 2 | **La validación dirigida funciona; la línea de C3b quedó detenida.** El slot `provider_targeted_validator` **sí se puede entregar**: el 2026-10-03 validó una corrección de 8 líneas y la revisión cerró en `approved`. El rechazo es **intermitente**, no una incapacidad (D-028, diagnóstico corregido). | Una corrección quedó formalmente validada; la de C3b no, porque esa línea se detuvo terminalmente por un rechazo hoy considerado transitorio. | Rehacer la revisión del rango que contiene `54a8498`, o declarar perdida esa validación formal. **Decisión del mantainer, no bloqueo técnico.** |
 | 3 | **C1a y C1b no revisables por separado.** El candidato por rango es `baseRef..HEAD`, así que las unidades anteriores a la cola quedaron fuera del alcance revisable. | Confirmado por medición (ver D-027). | Solo revisando el rango completo, que excede el presupuesto de lentes. |
 
 **Consecuencia que no se disimula:** estos tres puntos viajan con el proyecto. Un lector de este
