@@ -114,9 +114,15 @@ def board_projection_digest(seed):
 
 def engine_decision_digest(seed):
     """Digest of the engine structured decision contract (decide() with evidence for first 400 issues)."""
+    timeout_seconds = 600  # this gate must never hang; the snippet itself runs in about 4 s
     env = dict(os.environ, PYTHONHASHSEED=seed)
     code = ENGINE_DECISION_SNIPPET % (str(ROOT), str(ROOT))
-    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
+    try:
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
+                                env=env, timeout=timeout_seconds)
+    except subprocess.TimeoutExpired:
+        raise SystemExit(f"engine decision check timed out after {timeout_seconds}s "
+                         f"with PYTHONHASHSEED={seed}")
     if result.returncode != 0:
         sys.stderr.write(result.stderr)
         raise SystemExit(f"engine decision check failed with PYTHONHASHSEED={seed}")
