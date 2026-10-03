@@ -13,7 +13,7 @@
   `9f32cb1` (C3a docs) · `806a466` (C3b índices) · `6be5093` (corrección de D-027).
 * **Regla de secuencia vigente (D-027):** **un commit sin revisar por vez.**
   Commitear → revisar el rango → no commitear nada más hasta que esa revisión cierre.
-* **Checks:** `python3 tools/verify_all.py --full` → **11/11**; sin `--full` → **9/9**.
+* **Checks:** `python3 tools/verify_all.py --full` → **12/12**; sin `--full` → **10/10**.
 * **Suites:** `python3 test_rules.py` → **129/129**; `python3 test_board.py` → **79/79**;
   contratos `python3 schemas/validate.py` → **12/12**.
 
@@ -122,7 +122,7 @@ la verdad:
 | 129/129 reglas | `python3 test_rules.py` | solo por ejecución |
 | 79/79 tablero | `python3 test_board.py` | solo por ejecución |
 | 12/12 contratos | `python3 schemas/validate.py` | solo por ejecución |
-| `python3 tools/verify_all.py --full` → **11/11** · sin `--full` → **9/9** | `python3 tools/verify_all.py [--full]` | solo por ejecución |
+| `python3 tools/verify_all.py --full` → **12/12** · sin `--full` → **10/10** | `python3 tools/verify_all.py [--full]` | solo por ejecución |
 
 ### Clase C — Local: NO verificable desde el artefacto
 

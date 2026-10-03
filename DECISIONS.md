@@ -303,7 +303,7 @@
   - El digest del motor se declara **inexistente**: el motor no emite uno propio, y su determinismo se comprueba por la salida derivada, que sí está cubierta.
 - **La regla, que es la decisión:** **ninguna cifra se publica sin haber corrido, al menos una vez, el comando que la produce.** Una etiqueta de procedencia al lado de un número no es evidencia: la procedencia hay que **ejecutarla** antes de publicar. Y si un número no tiene comando, se declara explícitamente no verificable en vez de decorarlo con una fuente plausible.
 - **Clasificación de cifras que queda vigente:** **Clase A** (derivada por comando desde datos del árbol, legible por un revisor), **Clase B** (solo por ejecución de la suite; explícitamente **no** verificable de forma estática: `assert_test(` aparece 31 veces contra un reporte de 125 porque hay casos en bucles, y `pytest` no recolecta porque son harness propios), **Clase C** (local, no verificable desde el artefacto). `STATUS.md` publica la tabla completa.
-- **Aprendizaje lateral:** `verify_all.py` sin `--full` → **9/9** y con `--full` → **11/11**. Declarar solo el conteo del modo completo sin decir el modo es otra forma de cifra sin contexto.
+- **Aprendizaje lateral:** `verify_all.py` sin `--full` → **10/10** y con `--full` → **12/12**. Declarar solo el conteo del modo completo sin decir el modo es otra forma de cifra sin contexto.
 
 ## D-030 — No hay reescritura: tres costuras hexagonales en vez de una arquitectura nueva
 

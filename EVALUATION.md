@@ -20,7 +20,7 @@
 | Do the mechanical modules exist? | Yes: completeness (A), duplicates (B), cross-repo links (C), possibly-obsolete (D). Read-only, no labels needed | `MODULES.md`, `python3 tools/run_reports.py` |
 | Are the reports reproducible? | Yes, byte-identical across processes | `python3 tools/determinism_check.py` |
 | Is there a board? | Yes: a local Kanban console with one board per application, in testing | `python3 board/server.py --ingest` → 127.0.0.1:8770 |
-| One gate for everything? | `python3 tools/verify_all.py --full` → **11/11** checks in one command | `python3 tools/verify_all.py --full` |
+| One gate for everything? | `python3 tools/verify_all.py --full` → **12/12** checks in one command | `python3 tools/verify_all.py --full` |
 | Tests | `python3 test_rules.py` → **129/129** · `schemas/validate.py` → **12/12** | this file §2 and §3 |
 
 > **Honesty note.** Coverage is a census, not a correctness measure. The crash vocabulary and the rule order were changed after the adversarial audit; **no precision improvement is claimed** until a maintainer labels a fresh sample.

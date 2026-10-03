@@ -24,6 +24,7 @@ FAST_CHECKS = [
     ("board log reconstructibility", [sys.executable, "tools/board_rebuild_check.py"]),
     ("figure recomputation", [sys.executable, "tools/metrics.py"]),
     ("published figures match the documents", [sys.executable, "tools/figures_check.py"]),
+    ("figures check unit tests", [sys.executable, "test_figures_check.py"]),
     ("precision report runs (0 labels -> not available)", [sys.executable, "tools/precision_report.py"]),
 ]
 

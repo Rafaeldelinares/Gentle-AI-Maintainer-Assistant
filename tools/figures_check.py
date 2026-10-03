@@ -102,6 +102,8 @@ def run_capture(cmd):
         raise SystemExit(
             f"child process timed out after {TIMEOUT_SECONDS}s: {' '.join(str(c) for c in cmd)}"
         )
+    except OSError as error:
+        raise SystemExit(f"cannot run {' '.join(str(c) for c in cmd)}: {error}")
 
 
 def parse_ratio(text, marker):
@@ -117,20 +119,30 @@ def parse_ratio(text, marker):
     return None
 
 
+def gate_totals_from(fast_checks, full_checks, contracts_step):
+    """The counting arithmetic, separated from the environment so it can be tested."""
+    return fast_checks + contracts_step, fast_checks + full_checks + contracts_step
+
+
 def gate_totals():
     """Compute the gate totals from verify_all's own lists, never hardcoded.
 
     main() appends the contracts step OUTSIDE those lists, and only when .venv exists, so
     the denominator is environment-dependent. Computing it here is the point: a hardcoded
     total would go stale exactly the way the documents did.
+
+    An unimportable verify_all is reported, not raised: this guard must fail by explaining,
+    never by crashing with a traceback.
     """
     sys.path.insert(0, str(ROOT / "tools"))
-    import verify_all  # noqa: E402  (path set above)
+    try:
+        import verify_all  # noqa: E402  (path set above)
+        fast_checks, full_checks = len(verify_all.FAST_CHECKS), len(verify_all.FULL_CHECKS)
+    except (ImportError, SyntaxError, AttributeError) as error:
+        raise SystemExit(f"cannot read the gate totals from tools/verify_all.py: {error}")
 
     contracts_step = 1 if (ROOT / ".venv" / "bin" / "python").exists() else 0
-    fast = len(verify_all.FAST_CHECKS) + contracts_step
-    full = len(verify_all.FAST_CHECKS) + len(verify_all.FULL_CHECKS) + contracts_step
-    return fast, full
+    return gate_totals_from(fast_checks, full_checks, contracts_step)
 
 
 def establish_truth():
@@ -229,7 +241,12 @@ def main():
         path = ROOT / name
         if not path.exists():
             continue
-        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        try:
+            content = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as error:
+            problems.append((name, 0, "-", f"cannot be read, so its claims cannot be checked: {error}"))
+            continue
+        for lineno, line in enumerate(content.splitlines(), 1):
             for subject, _at, n, m in claims_on_line(line):
                 checked += 1
                 if n != m:
