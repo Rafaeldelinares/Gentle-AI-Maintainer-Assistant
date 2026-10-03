@@ -22,7 +22,8 @@ FAST_CHECKS = [
     ("read-only invariant", [sys.executable, "tools/readonly_check.py"]),
     ("privacy invariant", [sys.executable, "tools/privacy_check.py"]),
     ("board log reconstructibility", [sys.executable, "tools/board_rebuild_check.py"]),
-    ("published figures", [sys.executable, "tools/metrics.py"]),
+    ("figure recomputation", [sys.executable, "tools/metrics.py"]),
+    ("published figures match the documents", [sys.executable, "tools/figures_check.py"]),
     ("precision report runs (0 labels -> not available)", [sys.executable, "tools/precision_report.py"]),
 ]
 

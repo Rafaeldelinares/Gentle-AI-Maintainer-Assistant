@@ -63,7 +63,7 @@ This document establishes the authoritative governance protocol and architectura
 * **El motor solo sugiere columnas de bloqueo** (`falta_info`, `revision_humana`); nunca `listo_mantener` ni `en_manos`. Mover una tarjeta y fijar el veredicto humano son decisiones de una persona.
 * **Sin red saliente**: `tools/readonly_check.py` ahora también falla ante cualquier cliente HTTP en el código del proyecto.
 * **Solo localhost**, puerto **8770** (el 8000 lo ocupa el cockpit del CRM de ByBusiness). El servidor rechaza cualquier otra interfaz.
-* Verificación: `python3 test_board.py` (**79/79**), `tools/board_rebuild_check.py`, `python3 tools/verify_all.py` (`--full` → **10/10**, sin `--full` → **8/8**). Método y límites en `BOARD.md`.
+* Verificación: `python3 test_board.py` (**79/79**), `tools/board_rebuild_check.py`, `python3 tools/verify_all.py` (`--full` → **11/11**, sin `--full` → **9/9**). Método y límites en `BOARD.md`.
 
 ### Phase 2: Problem Definition & Operational Boundaries
 * Characterized cross-system coupling edges and the 4 canonical implication patterns ((a)–(d)).
