@@ -196,4 +196,4 @@ python3 tools/verify_all.py          # puerta rápida: tests, invariantes, figur
 python3 tools/verify_all.py --full   # agrega regeneración de reportes y determinismo
 ```
 
-Cubre: `test_rules.py` (125), `test_board.py` (76), contratos (12), invariante read-only, invariante de privacidad, reconstruibilidad del log del tablero y recálculo de figuras publicadas.
+Cubre: `test_rules.py` (129), `test_board.py` (79), contratos (12), invariante read-only, invariante de privacidad, reconstruibilidad del log del tablero y recálculo de figuras publicadas.

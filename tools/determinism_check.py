@@ -2,11 +2,14 @@
 """
 determinism_check.py — Verifies that everything *derived* is byte-identical across processes.
 
-Covers two things that must be reproducible:
+Covers three things that must be reproducible:
   1. the four module reports (files on disk);
   2. the board's derived projection (bands, rules, suggested columns, missing-info severity,
      tag counts and column counts), computed by ingesting the snapshot into a temporary
-     database.
+     database;
+  3. the engine's structured decision contract (`decide(..., include_evidence=True)` covering
+     band, rule, cross, review flag/reason, decided_by, rules_considered, and rich evidence)
+     for the first 400 issues.
 
 What is deliberately NOT checked here: the human decisions (card column, verdict). Those
 must not be deterministic; what is verified about them is that they are reconstructible
@@ -67,6 +70,23 @@ conn.close()
 sys.stdout.write(h.hexdigest())
 """
 
+ENGINE_DECISION_SNIPPET = """
+import hashlib, json, sys
+from pathlib import Path
+sys.path.insert(0, str(Path(%r) / "db"))
+import rules
+with open(Path(%r) / "issues.json", encoding="utf-8") as fh:
+    issues = json.load(fh)
+h = hashlib.sha256()
+for row in issues[:400]:
+    labels = row.get("labels") or []
+    cross_refs = row.get("cross_refs") or []
+    decision = rules.decide(row, labels, cross_refs, include_evidence=True)
+    serialized = json.dumps(decision, sort_keys=True, ensure_ascii=False)
+    h.update(serialized.encode("utf-8"))
+sys.stdout.write(h.hexdigest())
+"""
+
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -89,6 +109,17 @@ def board_projection_digest(seed):
     if result.returncode != 0:
         sys.stderr.write(result.stderr)
         raise SystemExit(f"board projection failed with PYTHONHASHSEED={seed}")
+    return result.stdout.strip()
+
+
+def engine_decision_digest(seed):
+    """Digest of the engine structured decision contract (decide() with evidence for first 400 issues)."""
+    env = dict(os.environ, PYTHONHASHSEED=seed)
+    code = ENGINE_DECISION_SNIPPET % (str(ROOT), str(ROOT))
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
+    if result.returncode != 0:
+        sys.stderr.write(result.stderr)
+        raise SystemExit(f"engine decision check failed with PYTHONHASHSEED={seed}")
     return result.stdout.strip()
 
 
@@ -121,6 +152,16 @@ def main():
         for seed, digest in board_digests.items():
             print(f"       seed {seed}: {digest[:16]}…")
         failures.append("board derived projection")
+
+    # The engine's structured decision contract: band, rule, cross, review, decided_by, trace, evidence.
+    engine_digests = {seed: engine_decision_digest(seed) for seed in SEEDS}
+    if len(set(engine_digests.values())) == 1:
+        print(f"  ✔ engine decision contract: {list(engine_digests.values())[0][:16]}…")
+    else:
+        print("  ❌ engine decision contract differs across seeds")
+        for seed, digest in engine_digests.items():
+            print(f"       seed {seed}: {digest[:16]}…")
+        failures.append("engine decision contract")
 
     print("────────────────────────────────────────────────────────────────────")
     if failures:

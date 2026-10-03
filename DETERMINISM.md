@@ -11,6 +11,7 @@
 Es todo lo que el sistema **calcula** desde el snapshot congelado:
 
 - la banda de cada issue y la regla que la produjo,
+- el contrato de decisión estructurado (`decide()`),
 - la columna sugerida,
 - los campos faltantes del formulario y su severidad,
 - los contadores de cada etiqueta y de cada columna,
@@ -22,16 +23,29 @@ Es todo lo que el sistema **calcula** desde el snapshot congelado:
 
 | Qué | Chequeo | Resultado |
 | --- | --- | --- |
-| Clasificación del motor | mismo snapshot, semillas distintas; tanto los cuatro reportes de módulos como la proyección del tablero pasan por el motor | **el motor no emite un digest propio.** Se comprueba por los digests de salida derivada: `python3 tools/determinism_check.py` → tablero `b0a61cf3325ef7f1…`, A `0c0ccaca24fb234b…`, B `7e63683152dd4e70…`, C `684fcc589d8629bc…`, D `7cd51c438a563c4c…`. *(Una versión anterior citaba un digest `2779c866aca75dc4…` que ningún comando producía.)* |
-| Reportes de módulos A–D | dos procesos distintos | byte-idénticos |
-| Proyección derivada del tablero | ingest fresco en base temporal, dos semillas | digest idéntico |
+| Contrato de decisión del motor | `decide(..., include_evidence=True)` sobre los primeros 400 issues, dos semillas | digest idéntico: `python3 tools/determinism_check.py` → `engine decision contract: 29528cd3d38784c2…` |
+| Proyección derivada del tablero | ingest fresco en base temporal, dos semillas | digest idéntico: `python3 tools/determinism_check.py` → `board derived projection: b0a61cf3325ef7f1…` |
+| Reportes de módulos A–D | dos procesos distintos, dos semillas | cuatro digests byte-idénticos: `python3 tools/determinism_check.py` → A `0c0ccaca24fb234b…`, B `7e63683152dd4e70…`, C `684fcc589d8629bc…`, D `7cd51c438a563c4c…` |
 | Cifras publicadas | `tools/metrics.py` las recalcula | ninguna escrita a mano |
 | Contratos de datos | `schemas/validate.py` | 12/12 |
 
 ```bash
-python3 tools/determinism_check.py     # derivado byte-idéntico entre procesos
+python3 tools/determinism_check.py     # los seis digests de salida derivada byte-idénticos entre procesos
 python3 tools/verify_all.py --full     # todo el gate, incluido lo anterior
 ```
+
+### Qué cubre y qué no cubre el digest del motor
+
+El nuevo digest (`29528cd3d38784c2…`) cubre el contrato de decisión estructurado emitido por `decide(row, labels, cross_refs, include_evidence=True)`: banda, regla, clasificación cross-system, flag de revisión humana, motivo, `decided_by`, traza ordenada de `rules_considered`, y el bloque completo de `evidence` con spans y estados de predicados.
+
+Qué **no** cubre deliberadamente:
+1. **Los issues 401 a 1.228 con evidencia rica:** la generación de evidencia detallada (10 evaluaciones regex y extracción de contexto por issue) es costosa en tiempo. Acotar a los primeros 400 issues mantiene el chequeo en ~40s corriendo dos veces bajo semillas distintas. Los issues restantes están cubiertos sin bloque de evidencia por la proyección del tablero y por el test de consistencia mutua en `test_rules.py` §15.
+2. **Decisiones humanas (columna en el tablero, veredicto):** por diseño son no deterministas y pertenecen a la Capa 2; su auditabilidad se verifica mediante reconstrucción del log append-only con `tools/board_rebuild_check.py`.
+3. **Resolución de la zona gris (718 issues):** el digest sí cubre los registros de decisión deterministas de los issues de zona gris dentro de los primeros 400 (donde 309 issues tienen `band is None`), certificando que el motor los clasifica como indeterminados de forma determinista; lo que no cubre es la **resolución por LLM** posterior de esos issues, que opera fuera de las reglas deterministas de código.
+
+### Limitación honesta: qué detecta `determinism_check.py` y qué no
+
+`tools/determinism_check.py` compara la salida del motor ejecutada bajo dos semillas distintas de hash (`PYTHONHASHSEED=0` vs `PYTHONHASHSEED=42`). Por diseño, este chequeo **solo detecta no determinismo dependiente del proceso o de las semillas de hash** (por ejemplo, iteración sobre conjuntos o diccionarios sin orden estable). **No** compara contra un valor dorado almacenado, por lo que una regresión en el orden o en el contenido que sea *determinista* alterará el digest resultante pero seguirá pasando el chequeo de dos semillas. La protección contra regresiones deterministas en estos campos proviene del fixture dorado (`board/fixtures/explain-golden.json`), no de `determinism_check.py`.
 
 ### Por qué importa que sea determinista
 
@@ -137,7 +151,7 @@ Son **código versionado** en `db/rules.py`. Cada una tiene:
 
 - su patrón explícito (una expresión regular legible),
 - sus guardas (qué la cancela),
-- tests con **casos reales nombrados** (`test_rules.py`, 125 tests),
+- tests con **casos reales nombrados** (`test_rules.py`, 129 tests),
 - un chequeo de determinismo entre procesos.
 
 ### Cómo se cambia una regla, entonces

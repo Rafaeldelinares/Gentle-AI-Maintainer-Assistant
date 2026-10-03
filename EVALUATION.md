@@ -21,7 +21,7 @@
 | Are the reports reproducible? | Yes, byte-identical across processes | `python3 tools/determinism_check.py` |
 | Is there a board? | Yes: a local Kanban console with one board per application, in testing | `python3 board/server.py --ingest` → 127.0.0.1:8770 |
 | One gate for everything? | 10/10 checks in one command (`--full`) | `python3 tools/verify_all.py --full` |
-| Tests | `125/125` rule tests, `12/12` contract tests | this file §2 and §3 |
+| Tests | `129/129` rule tests, `12/12` contract tests | this file §2 and §3 |
 
 > **Honesty note.** Coverage is a census, not a correctness measure. The crash vocabulary and the rule order were changed after the adversarial audit; **no precision improvement is claimed** until a maintainer labels a fresh sample.
 
@@ -1209,7 +1209,7 @@ if __name__ == "__main__":
     - rule:crash_with_workaround_demoted_to_p2    :    4
 
 ────────────────────────────────────────────────────────────────────
- FINAL TEST RESULT: 125/125 tests passed successfully.
+ FINAL TEST RESULT: 129/129 tests passed successfully.
 ════════════════════════════════════════════════════════════════════
 ```
 

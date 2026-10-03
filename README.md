@@ -179,7 +179,7 @@ python3 db/rules.py
 python3 test_rules.py
 ```
 
-*Expected result:* `FINAL TEST RESULT: 125/125 tests passed successfully.`
+*Expected result:* `FINAL TEST RESULT: 129/129 tests passed successfully.`
 
 ### 4. Review the Promise Contract
 

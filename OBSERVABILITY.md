@@ -33,7 +33,7 @@
 * **db/rules.py (Deterministic Rule Engine):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/db/rules.py
 
-* **test_rules.py (Rule Test Suite — 125/125 passing, concrete cases):**
+* **test_rules.py (Rule Test Suite — 129/129 passing, concrete cases):**
   https://raw.githubusercontent.com/Rafaeldelinares/Gentle-AI-Maintainer-Assistant/master/test_rules.py
 
 * **tools/metrics.py (Recomputes Every Published Figure):**
@@ -175,8 +175,8 @@
 ```bash
 python3 tools/metrics.py          # every published figure
 python3 db/rules.py               # classification + calibration sample
-python3 test_rules.py             # rule suite (125/125)
-python3 test_board.py             # board domain suite (76/76)
+python3 test_rules.py             # rule suite (129/129)
+python3 test_board.py             # board domain suite (79/79)
 .venv/bin/python schemas/validate.py   # contracts (12/12), needs jsonschema
 python3 tools/readonly_check.py   # read-only invariant
 python3 tools/privacy_check.py    # no personal data in the snapshot

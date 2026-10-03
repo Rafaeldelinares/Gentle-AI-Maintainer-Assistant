@@ -14,7 +14,7 @@
 * **Regla de secuencia vigente (D-027):** **un commit sin revisar por vez.**
   Commitear → revisar el rango → no commitear nada más hasta que esa revisión cierre.
 * **Checks:** `python3 tools/verify_all.py --full` → **10/10**; sin `--full` → **8/8**.
-* **Suites:** `python3 test_rules.py` → **125/125**; `python3 test_board.py` → **76/76**;
+* **Suites:** `python3 test_rules.py` → **129/129**; `python3 test_board.py` → **79/79**;
   contratos `python3 schemas/validate.py` → **12/12**.
 
 ### Revisiones nativas — nada de esto está «cerrado»
@@ -89,7 +89,7 @@ pero puede comprobar que la cifra **no está escrita a mano**.
 
 ```bash
 python3 tools/metrics.py          # todas las cifras de "Current figures"
-python3 tools/determinism_check.py # los cinco digests de salida derivada
+python3 tools/determinism_check.py # los seis digests de salida derivada
 python3 tools/run_reports.py      # los cuatro reportes de módulos
 ```
 
@@ -101,6 +101,7 @@ python3 tools/run_reports.py      # los cuatro reportes de módulos
 | Zona gris residual | `python3 tools/metrics.py` | `residual grey area: 718 (58.5%)` |
 | Bandas P0/P1/P2/P3 | `python3 tools/metrics.py` | `candidato P0 14 · P1 17 · P2 399 · P3 80` |
 | Marcados para mirada humana | `python3 tools/metrics.py` | `flagged for human review: 26` |
+| Digest del contrato de decisión del motor | `python3 tools/determinism_check.py` | `engine decision contract: 29528cd3d38784c2…` |
 | Digest del tablero derivado | `python3 tools/determinism_check.py` | `board derived projection: b0a61cf3325ef7f1…` |
 | Digest de cada módulo | `python3 tools/determinism_check.py` | `A 0c0ccaca24fb234b… · B 7e63683152dd4e70… · C 684fcc589d8629bc… · D 7cd51c438a563c4c…` |
 
@@ -109,7 +110,7 @@ python3 tools/run_reports.py      # los cuatro reportes de módulos
 Estas cifras **no se pueden contar leyendo**. Vale la pena decir por qué, porque es incómodo y es
 la verdad:
 
-* `grep -c 'assert_test(' test_rules.py` → **31**, pero la suite reporta **125**: los casos
+* `grep -c 'assert_test(' test_rules.py` → **35**, pero la suite reporta **129**: los casos
   restantes viven dentro de **bucles** sobre listas de issues reales.
 * `pytest test_rules.py test_board.py` → **no recolecta nada**: son harness propios
   (`python3 test_rules.py`), no pruebas unittest/pytest.
@@ -118,8 +119,8 @@ la verdad:
 
 | Cifra | Comando | Naturaleza |
 | --- | --- | --- |
-| 125/125 reglas | `python3 test_rules.py` | solo por ejecución |
-| 76/76 tablero | `python3 test_board.py` | solo por ejecución |
+| 129/129 reglas | `python3 test_rules.py` | solo por ejecución |
+| 79/79 tablero | `python3 test_board.py` | solo por ejecución |
 | 12/12 contratos | `python3 schemas/validate.py` | solo por ejecución |
 | 10/10 y 8/8 checks | `python3 tools/verify_all.py [--full]` | solo por ejecución |
 
