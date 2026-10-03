@@ -80,6 +80,14 @@ Ninguna tarjeta arranca en "Listo" ni en "En manos": esas columnas solo se llena
 
 La leyenda completa — bandas P0–P3, `falta info ×N`, `⚠ mirada humana`, `zona gris` y el uso de la barra lateral — está en **[`GLOSSARY.md`](GLOSSARY.md)**, y también dentro del tablero con el botón **«¿Qué significa?»**.
 
+### Completitud no disponible
+
+Si `products/` no está (los checkouts vendorizados, **fuera de git**), la completitud **no se
+puede calcular** y el tablero lo dice: las tarjetas muestran **`completitud no disponible`**,
+un badge neutro y punteado, y **ninguna se sugiere a `falta_info`**. No saber si a un reporte
+le falta información no es lo mismo que saber que está completo, y el tablero no confunde las
+dos cosas. Se arregla con `./sync-products.sh` y una reingesta.
+
 ## 3. Las columnas
 
 ```
@@ -196,4 +204,4 @@ python3 tools/verify_all.py          # puerta rápida: tests, invariantes, figur
 python3 tools/verify_all.py --full   # agrega regeneración de reportes y determinismo
 ```
 
-Cubre: `test_rules.py` (129), `test_board.py` (79), contratos (12), invariante read-only, invariante de privacidad, reconstruibilidad del log del tablero y recálculo de figuras publicadas.
+Cubre: `test_rules.py` (129), `test_board.py` (85), contratos (12), invariante read-only, invariante de privacidad, reconstruibilidad del log del tablero y recálculo de figuras publicadas.

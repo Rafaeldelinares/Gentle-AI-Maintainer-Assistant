@@ -150,6 +150,18 @@ The walkthrough uses illustrative, clearly synthetic issue numbers so that no in
 
 Anyone reviewing this repository can independently evaluate the contracts, rules, and designs.
 
+### 0. Fetch the vendored checkouts (required for two checks)
+
+```bash
+./sync-products.sh
+```
+
+The board suite and the Module A/B/C/D reports read the audited repositories' real issue
+forms and source from `products/`, which is **deliberately outside git**. Without it the
+board cannot tell whether a report is missing information, so it reports completeness as
+*unavailable* rather than guessing, and `tools/verify_all.py` says which checks need the step.
+Everything else runs without it.
+
 ### 1. Run the Contract Validation Test Suite
 
 Verify that all schemas adhere to JSON Schema Draft 2020-12 and fail closed on violations:

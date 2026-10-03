@@ -65,6 +65,14 @@ def main():
     for label, cmd in checks:
         results.append((label, run(label, cmd)))
 
+    # The board suite and the module reports read the issue forms from products/,
+    # which is deliberately outside git. Say so where it fails, so the failure is
+    # legible instead of a cryptic test error.
+    if not (ROOT / "products").exists():
+        print("\n── prerequisite ──")
+        print("   ⚠ products/ is missing: the board suite and the module reports read")
+        print("     the issue templates from it. Run ./sync-products.sh, then retry.")
+
     # Contract tests need jsonschema, which lives in .venv.
     venv = ROOT / ".venv" / "bin" / "python"
     if venv.exists():

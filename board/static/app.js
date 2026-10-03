@@ -111,9 +111,11 @@ async function runSimulation() {
     });
     const band = x.band || "zona gris";
     const cls = !x.band ? "" : (x.band.indexOf("candidato P0") === 0 ? "danger" : (x.band === "P1" ? "warn" : ""));
-    const falta = x.missing_fields.length
-      ? `<span class="badge miss-${esc(x.missing_severity)}">falta info ×${x.missing_fields.length}/${x.required_total}</span>`
-      : "";
+    const falta = x.missing_severity === "unavailable"
+      ? `<span class="badge miss-unavailable">completitud no disponible</span>`
+      : (x.missing_fields.length
+        ? `<span class="badge miss-${esc(x.missing_severity)}">falta info ×${x.missing_fields.length}/${x.required_total}</span>`
+        : "");
     const steps = x.checks.map((c) => `
       <div class="sim-step ${c.won ? "won" : (c.matched ? "" : "off")}">
         <span class="mark">${c.won ? "▶" : (c.matched ? "·" : "✗")}</span>
@@ -203,6 +205,9 @@ function cardElement(card) {
   }
   if (card.review_flag) {
     badges.push(`<span class="badge warn" title="Hay una señal dura (pérdida de datos o crash) pero el título tiene un prefijo no-bug. El motor NO sube la banda: te pide que lo mires.">⚠ mirada humana</span>`);
+  }
+  if (card.missing_severity === "unavailable") {
+    badges.push(`<span class="badge miss-unavailable" title="La completitud no se pudo calcular: faltan las plantillas de issue de este repositorio. Corré ./sync-products.sh y volvé a ingerir el snapshot.">completitud no disponible</span>`);
   }
   if (card.missing_fields && card.missing_fields.length) {
     const detail = card.missing_fields.map(esc).join(", ");

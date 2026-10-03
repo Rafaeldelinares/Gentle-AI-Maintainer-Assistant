@@ -181,6 +181,9 @@ body {
 .badge.miss-medium   { color: var(--warn); border-color: rgba(240,180,41,.55); background: rgba(240,180,41,.10); }
 .badge.miss-high     { color: #f08a3c; border-color: rgba(240,138,60,.60); background: rgba(240,138,60,.12); }
 .badge.miss-critical { color: var(--danger); border-color: rgba(239,107,107,.65); background: rgba(239,107,107,.14); font-weight: 600; }
+/* Unknown is not a severity: it is the absence of the measurement, so it reads as
+   neutral and dashed instead of borrowing a colour that would imply a judgement. */
+.badge.miss-unavailable { color: #9aa4b2; border-style: dashed; border-color: rgba(154,164,178,.55); }
 
 .legend .miss-scale { display: inline-flex; align-items: center; gap: 4px; }
 .legend .miss-scale i {

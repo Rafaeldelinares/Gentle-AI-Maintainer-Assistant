@@ -14,7 +14,7 @@
 * **Regla de secuencia vigente (D-027):** **un commit sin revisar por vez.**
   Commitear → revisar el rango → no commitear nada más hasta que esa revisión cierre.
 * **Checks:** `python3 tools/verify_all.py --full` → **12/12**; sin `--full` → **10/10**.
-* **Suites:** `python3 test_rules.py` → **129/129**; `python3 test_board.py` → **79/79**;
+* **Suites:** `python3 test_rules.py` → **129/129**; `python3 test_board.py` → **85/85**;
   contratos `python3 schemas/validate.py` → **12/12**.
 
 ### Revisiones nativas — nada de esto está «cerrado»
@@ -120,7 +120,7 @@ la verdad:
 | Cifra | Comando | Naturaleza |
 | --- | --- | --- |
 | 129/129 reglas | `python3 test_rules.py` | solo por ejecución |
-| 79/79 tablero | `python3 test_board.py` | solo por ejecución |
+| 85/85 tablero | `python3 test_board.py` | solo por ejecución |
 | 12/12 contratos | `python3 schemas/validate.py` | solo por ejecución |
 | `python3 tools/verify_all.py --full` → **12/12** · sin `--full` → **10/10** | `python3 tools/verify_all.py [--full]` | solo por ejecución |
 

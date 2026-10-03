@@ -37,7 +37,7 @@ from rules import classify_issue_deterministically, requires_human_review  # noq
 
 try:  # module A helpers are optional: without them the board still works
     from completeness import split_sections, label_status, kind_of  # noqa: E402
-    from templates import all_repo_templates, required_fields  # noqa: E402
+    from templates import all_repo_templates, required_fields, templates_present  # noqa: E402
     _COMPLETENESS_AVAILABLE = True
 except Exception:  # pragma: no cover
     _COMPLETENESS_AVAILABLE = False
@@ -126,7 +126,14 @@ def board_tags(conn, slug):
 
 
 def missing_severity(missing_count, required_total):
-    """Severidad proporcional de la información faltante, de 'none' a 'critical'."""
+    """Severidad proporcional de la información faltante, de 'none' a 'critical'.
+
+    'unavailable' no es una severidad más alta: es la ausencia de la medición. Se distingue
+    de 'none' a propósito, porque 'none' afirma que no falta nada y eso, cuando no se pudieron
+    leer los formularios, es una afirmación falsa.
+    """
+    if missing_count is None or required_total is None:
+        return "unavailable"
     if not required_total or missing_count <= 0:
         return "none"
     ratio = missing_count / required_total
@@ -257,12 +264,19 @@ def _required_content(slug, kind):
 # --------------------------------------------------------------------------- ingest
 
 def _missing_fields(issue):
-    """Returns (missing_labels, required_total) for the issue's own form."""
-    if not _COMPLETENESS_AVAILABLE:
-        return [], 0
+    """Returns (missing_labels, required_total), or (None, None) when it cannot be known.
+
+    "Cannot be known" is not "nothing is missing". The first means this repository's forms
+    were not available to read -- the vendored checkouts are absent -- and the second means
+    they were read and ask for nothing. Only the second is a claim about the issue, and
+    collapsing them is what let the board report every card as complete without ever
+    reading a form.
+    """
     kind = kind_of(issue)
     if kind is None:
         return [], 0
+    if not _COMPLETENESS_AVAILABLE or not templates_present(issue["slug"]):
+        return None, None
     content = _required_content(issue["slug"], kind)
     if not content:
         return [], 0
@@ -283,6 +297,7 @@ def derive_card(issue):
     band, cross, rule = classify_issue_deterministically(issue, labels, cross_refs)
     flag, reason = requires_human_review(issue, labels, cross_refs)
     missing, required_total = _missing_fields(issue)
+    severity = missing_severity(None if missing is None else len(missing), required_total)
 
     suggested = None
     if missing:
@@ -302,9 +317,9 @@ def derive_card(issue):
         "review_flag": 1 if flag else 0,
         "review_reason": reason,
         "suggested_column": suggested,
-        "missing_fields": missing,
-        "required_total": required_total,
-        "missing_severity": missing_severity(len(missing), required_total),
+        "missing_fields": missing or [],
+        "required_total": required_total or 0,
+        "missing_severity": severity,
     }
 
 

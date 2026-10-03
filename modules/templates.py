@@ -118,6 +118,17 @@ def parse_template(path):
     return _fallback_parse(text)
 
 
+def templates_present(slug):
+    """Whether this repository's issue-form directory exists at all.
+
+    Absent means the vendored checkouts are missing. That is a different fact from a
+    repository whose forms simply do not require a field: the first is unknown, the second
+    is known. Callers that report completeness must distinguish them, because reporting
+    "nothing missing" when nothing could be read is a silent lie.
+    """
+    return template_dir(slug).exists()
+
+
 def templates_for(slug):
     """Returns {'bug': [...fields], 'feature': [...fields], ...} for one repository."""
     out = {}
