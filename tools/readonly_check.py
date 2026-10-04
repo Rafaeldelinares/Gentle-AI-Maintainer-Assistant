@@ -44,6 +44,11 @@ MUTATION_PATTERNS = [
     # Outbound HTTP reads are allowed; only writes are banned. See the module docstring and D-036.
     (re.compile(r"\brequests\.(get|post|put|patch|delete)\b", re.IGNORECASE), "outbound HTTP via requests"),
     (re.compile(r"\burllib\.request\.Request\([^)]*method\s*=\s*[\"'](POST|PUT|PATCH|DELETE)", re.IGNORECASE), "HTTP write via urllib Request"),
+    # The lower-level clients are banned outright, and the reason is that this project does not
+    # need them: reads go through urllib.request.urlopen, whose write form is caught above. Leaving
+    # http.client allowed was a real gap -- `HTTPSConnection(...).request("POST", ...)` is a write
+    # that none of the patterns saw. A review lens found it as R3-http-client-gap, and it was right.
+    (re.compile(r"\bhttp\.client\b"), "http.client (banned outright: writes through it are not pattern-matchable)"),
     # A raw socket can do anything, so it stays out until a case genuinely needs it. That is a
     # deliberate gap, not an oversight: urlopen covers the reads this project performs.
     (re.compile(r"\bsocket\.create_connection\b"), "raw outbound socket"),
