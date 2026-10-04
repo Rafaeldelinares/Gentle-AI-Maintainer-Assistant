@@ -34,9 +34,13 @@ from common import (  # noqa: E402
 from obsolete import extract_references  # noqa: E402
 from rules import classify_issue_deterministically  # noqa: E402
 
-TOP_CLUSTERS = 15
-TOP_FILES = 12
-MAX_REFS_PER_CLUSTER = 40
+# The report is bounded on purpose. A first version listed forty issues per cluster across fifteen
+# clusters and produced 843 lines; the review relay aborted on it after sixteen minutes, and a
+# report too large to review is also too large to read. The full lists are one command away, so the
+# report shows enough to act on and states what the selection covers.
+TOP_CLUSTERS = 10
+TOP_FILES = 8
+MAX_REFS_PER_CLUSTER = 12
 
 
 def subsystem_of(path):

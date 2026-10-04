@@ -142,7 +142,7 @@ python3 tools/run_reports.py      # los cuatro reportes de módulos
 | Marcados para mirada humana | `python3 tools/metrics.py` | `flagged for human review: 26` |
 | Digest del contrato de decisión del motor | `python3 tools/determinism_check.py` | `engine decision contract: 29528cd3d38784c2…` |
 | Digest del tablero derivado | `python3 tools/determinism_check.py` | `board derived projection: b0a61cf3325ef7f1…` |
-| Digest de cada módulo | `python3 tools/determinism_check.py` | `A 0c0ccaca24fb234b… · B 7e63683152dd4e70… · C 684fcc589d8629bc… · E 0990841909b4a75f…`. **El de D se cita por comando y no por valor**: depende del estado de refs locales, no del commit fijado (D-037) |
+| Digest de cada módulo | `python3 tools/determinism_check.py` | `A 0c0ccaca24fb234b… · B 7e63683152dd4e70… · C 684fcc589d8629bc… · E ef25e084b66efe0d…`. **El de D se cita por comando y no por valor**: depende del estado de refs locales, no del commit fijado (D-037) |
 
 ### Clase B — Solo por ejecución de la suite: NO hay verificación estática
 
