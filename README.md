@@ -150,17 +150,23 @@ The walkthrough uses illustrative, clearly synthetic issue numbers so that no in
 
 Anyone reviewing this repository can independently evaluate the contracts, rules, and designs.
 
-### 0. Fetch the vendored checkouts (required for two checks)
+### 0. Materialize the audited inputs, pinned
 
 ```bash
-./sync-products.sh
+python3 tools/vendor.py --templates-only   # the ten issue forms, enough for the fast gate
+python3 tools/vendor.py --full             # full checkouts, for the module reports
 ```
 
-The board suite and the Module A/B/C/D reports read the audited repositories' real issue
-forms and source from `products/`, which is **deliberately outside git**. Without it the
-board cannot tell whether a report is missing information, so it reports completeness as
-*unavailable* rather than guessing, and `tools/verify_all.py` says which checks need the step.
-Everything else runs without it.
+The board suite and the Module A/B/C/D reports read the audited repositories' real issue forms
+and source from `products/`, which is **deliberately outside git**. Both modes fetch at the
+**pinned commits** the published figures cite (`gentle-ai@9dfe17d8`, `engram@0f79d5e`,
+`gentle-shell@7a27c1c0`), and fail loudly if a pin is unavailable — a fetch that silently took
+"whatever upstream is today" would move every completeness figure while the reports kept citing
+the old commits.
+
+Without the forms the board cannot tell whether a report is missing information, so it reports
+completeness as *unavailable* rather than guessing, and `tools/verify_all.py` says which checks
+need the step. Everything else runs without it.
 
 ### 1. Run the Contract Validation Test Suite
 

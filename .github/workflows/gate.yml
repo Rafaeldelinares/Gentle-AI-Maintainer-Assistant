@@ -1,0 +1,37 @@
+name: gate
+
+# The fast gate on every push. Deliberately NOT the full one: the module reports walk the
+# audited repositories' git history, so they need the complete checkouts. What this workflow
+# does not verify is said here and in STATUS.md, so a green run is never mistaken for more
+# than it is.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The issue forms, fetched AT THE PINNED COMMIT. Without them the board suite would skip
+      # two fixture checks and its total would differ from the one the documents publish, which
+      # is exactly the environment dependence the pins remove.
+      - name: fetch the pinned issue forms
+        run: python3 tools/vendor.py --templates-only
+
+      # The contract validator needs jsonschema. Without a venv the gate skips that step and
+      # its total changes, so CI builds the same environment the README describes.
+      - name: create the venv the contracts step needs
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet jsonschema
+
+      - name: run the fast gate
+        run: python3 tools/verify_all.py

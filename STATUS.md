@@ -11,6 +11,18 @@
 * **El lote del tablero ESTÁ commiteado**, en seis unidades encadenadas y en el remoto:
   `2d59094` (C1a dominio) · `d35ffbb` (C1b servidor/UI) · `28174e5` (C2 medición) ·
   `9f32cb1` (C3a docs) · `806a466` (C3b índices) · `6be5093` (corrección de D-027).
+* **CI:** `.github/workflows/gate.yml` corre el **gate rápido** en cada push, con las
+  plantillas traídas **al commit fijado** (`tools/vendor.py --templates-only`) y el venv que el
+  paso de contratos necesita. **No corre `--full`**, porque los reportes de módulos recorren la
+  historia git de los repositorios auditados y necesitan los checkouts completos: esa mitad la
+  corre una persona, y la diferencia está declarada acá en vez de escondida. *(El workflow en sí
+  no está verificado: nada se pusheó todavía, así que GitHub Actions nunca lo ejecutó; sus pasos
+  se simulan localmente.)*
+* **Inputs fijados (D-035):** los commits de los repositorios auditados viven en **un solo lugar**,
+  `tools/vendor.py`, con los hashes completos. Antes, `sync-products.sh` clonaba y hacía `pull`
+  de upstream, mientras los reportes citaban commits concretos: **regenerar los reportes habría
+  movido las cifras en silencio**. `sync-products.sh` quedó como envoltorio de `--full`.
+
 * **Regla de secuencia vigente (D-027):** **un commit sin revisar por vez.**
   Commitear → revisar el rango → no commitear nada más hasta que esa revisión cierre.
 * **Checks:** `python3 tools/verify_all.py --full` → **12/12**; sin `--full` → **10/10**.

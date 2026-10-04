@@ -19,7 +19,7 @@ Two evidence classes, deliberately kept apart so the strong signal is not dilute
 
 | Repository | Commit | Tracked files | Deleted paths in history |
 | --- | --- | --- | --- |
-| `gentle-ai` | `9dfe17d8` | 1826 | 1247 |
+| `gentle-ai` | `9dfe17d8` | 1826 | 1252 |
 | `engram` | `0f79d5e` | 555 | 276 |
 | `gentle-shell` | `7a27c1c0` | 733 | 1734 |
 
