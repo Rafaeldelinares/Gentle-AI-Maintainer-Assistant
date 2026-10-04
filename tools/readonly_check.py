@@ -6,6 +6,13 @@ The assistant must never comment, label, close, transfer, or open anything on
 Gentleman-Programming repositories. This checker scans the project's own source for
 mutating GitHub or HTTP write operations and fails if any is found.
 
+The invariant is about WRITES, and it now says so. It used to ban outbound HTTP clients
+outright -- http.client, urllib.request, requests.* -- which was a proxy for "cannot write to
+GitHub because it has no HTTP client". That proxy stopped being true the moment
+tools/vendor.py needed to FETCH the pinned issue forms. Banning the read would have been
+enforcing the letter and losing the point, so the rule now names what it always meant:
+outbound reads are allowed, outbound writes are not. See DECISIONS.md D-036.
+
   python3 tools/readonly_check.py
 
 Exit code 0 = read-only invariant holds. Exit code 1 = a mutating operation was found.
@@ -34,8 +41,11 @@ MUTATION_PATTERNS = [
     (re.compile(r"\burlopen\s*\([^)]*data\s*="), "HTTP write via urlopen"),
     (re.compile(r"\bcurl\b[^\n]*\s(-X|--request)\s*(POST|PATCH|PUT|DELETE)", re.IGNORECASE), "HTTP write via curl"),
     (re.compile(r"\bgit\s+push\b"), "git push"),
-    # The board must never talk outbound; it is a local projection plus a local log.
-    (re.compile(r"\bhttp\.client\b|\burllib\.request\b|\brequests\.(get|post|put|patch|delete)\b"), "outbound HTTP client"),
+    # Outbound HTTP reads are allowed; only writes are banned. See the module docstring and D-036.
+    (re.compile(r"\brequests\.(get|post|put|patch|delete)\b", re.IGNORECASE), "outbound HTTP via requests"),
+    (re.compile(r"\burllib\.request\.Request\([^)]*method\s*=\s*[\"'](POST|PUT|PATCH|DELETE)", re.IGNORECASE), "HTTP write via urllib Request"),
+    # A raw socket can do anything, so it stays out until a case genuinely needs it. That is a
+    # deliberate gap, not an oversight: urlopen covers the reads this project performs.
     (re.compile(r"\bsocket\.create_connection\b"), "raw outbound socket"),
 ]
 

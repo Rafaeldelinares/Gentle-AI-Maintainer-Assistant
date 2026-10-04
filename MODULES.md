@@ -1618,7 +1618,8 @@ if __name__ == "__main__":
 ════════════════════════════════════════════════════════════════════
  MODULE D — POSSIBLY OBSOLETE ISSUES
 ════════════════════════════════════════════════════════════════════
-  gentle-ai: commit 9dfe17d8 — 1826 tracked, 1247 deleted-in-history
+  gentle-ai: commit 9dfe17d8 — 1826 tracked, 1252 deleted-in-history (see D-037: this count
+depends on the checkouts' local ref state, not only on the pinned commit)
   engram: commit 0f79d5e — 555 tracked, 276 deleted-in-history
   gentle-shell: commit 7a27c1c0 — 733 tracked, 1734 deleted-in-history
 

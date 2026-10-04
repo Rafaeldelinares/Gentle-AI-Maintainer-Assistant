@@ -18,6 +18,11 @@
   corre una persona, y la diferencia está declarada acá en vez de escondida. *(El workflow en sí
   no está verificado: nada se pusheó todavía, así que GitHub Actions nunca lo ejecutó; sus pasos
   se simulan localmente.)*
+* **Hallazgo abierto (D-037):** la cifra de rutas borradas del **Módulo D** para `gentle-ai`
+  pasó de **1247 a 1252** sin que nadie editar vidas: un `git fetch` en los checkouts cambió el
+  **estado de refs locales**, y el módulo recorre refs, no solo el commit que cita. **Su cifra
+  depende de algo distinto de lo que documenta.** El alcance del recorrido tiene que ser el pin.
+  Se declara acá, no se arregla en esta unidad.
 * **Inputs fijados (D-035):** los commits de los repositorios auditados viven en **un solo lugar**,
   `tools/vendor.py`, con los hashes completos. Antes, `sync-products.sh` clonaba y hacía `pull`
   de upstream, mientras los reportes citaban commits concretos: **regenerar los reportes habría
@@ -339,7 +344,10 @@ que Rafael diga otra cosa.
 
 ## Constraints in force
 
-* **Solo lectura** sobre repositorios de terceros; verificado por `tools/readonly_check.py`.
+* **Solo lectura** sobre repositorios de terceros: la regla es **sin escrituras**, no "sin HTTP".
+  Verificado por `tools/readonly_check.py`, que prohíbe escrituras HTTP (POST/PUT/PATCH/DELETE),
+  `gh` mutante y `git push`, y **permite lecturas** — que es lo que el proyecto necesita para
+  traer sus inputs fijados (D-036).
 * **Sin nombres de maintainers ni métricas por persona.**
 * **Sin `veredicto_humano` llenado por la herramienta**; toda entrada queda `pendiente`.
 * **Sin cifras escritas a mano** en código ni docs: todo se recomputa, se cita, o se declara

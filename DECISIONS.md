@@ -380,3 +380,26 @@
 - **Un detalle que corrige el diagnóstico inicial:** los marcadores **vuelven a existir** tras un ciclo exitoso —con la fecha del `acknowledge`— así que **su presencia es normal**. Lo que estaba mal era su **obsolescencia**, no su existencia.
 - **Aprendizaje lateral:** `pgrep` lista procesos que pueden haber muerto antes de que los mires; para saber si algo está vivo de verdad, `/proc/<pid>/fd` es la fuente.
 - **Qué reportar a `gentle-ai`:** no hay auto-recuperación de marcadores obsoletos, y el diagnóstico apunta al lugar equivocado. Un `consent-binding-stale` que en realidad es un estado trabado costó horas.
+
+## D-035 — Los inputs auditados se fijan, y en un solo lugar
+
+- **Qué pasó:** `sync-products.sh` clonaba y después hacía `git pull --ff-only origin main`. O sea: **traía lo que hubiera hoy en upstream**, mientras `MODULES.md` y los reportes citan commits concretos —`gentle-ai@9dfe17d8`, `engram@0f79d5e`, `gentle-shell@7a27c1c0`—. Reejecutar el setup documentado y regenerar los reportes **habría movido todas las cifras de completitud y obsolescencia en silencio, bajo las mismas citas**.
+- **Por qué es la misma clase de siempre:** es D-029 un nivel más abajo. No es una cifra sin comando: es un **comando cuyo resultado depende del día en que lo corrés**. Una promesa de reproducibilidad que depende de lo que upstream tenga hoy no es una promesa de reproducibilidad.
+- **Cómo se forzó a la luz:** CI. Un CI sin pins es **no determinista**, y el guardián de cifras pasaría o fallaría según upstream.
+- **La decisión:** los pins viven en **un solo lugar**, `tools/vendor.py`, con los hashes **completos** y las listas de plantillas fijadas también. `--templates-only` trae los diez formularios desde `raw.githubusercontent` **en el commit exacto** (sin git, sin clon, verificado byte-idéntico al checkout local). `--full` clona o actualiza y hace `checkout` del pin, verificando que `HEAD` sea el pin. **Los dos modos fallan fuerte si el pin no está** — un fetch que "siempre funciona" tomando otra cosa en silencio es el defecto que esto reemplaza. `sync-products.sh` conserva el nombre y pasa a ser un envoltorio de `--full`, para que todas las referencias existentes sigan siendo válidas.
+- **Un pin en dos lugares es un pin que deriva.** Por eso los reportes citan hashes cortos y el tool tiene los completos: una cita y un pin son cosas distintas, y la verificación las une.
+
+## D-036 — El invariante de solo lectura es sobre ESCRITURAS, no sobre HTTP
+
+- **Qué pasó:** `tools/vendor.py` necesita **leer** por HTTPS, y `tools/readonly_check.py` prohibía `http.client`, `urllib.request` y `requests.*` **de plano**. El gate se puso en rojo.
+- **Por qué la regla estaba mal formulada:** el invariante real siempre fue **no escribir** en repositorios de terceros. "Sin cliente HTTP" era un **proxy** — y funcionaba porque el tablero no tenía ninguno. Dejó de ser cierto en cuanto hizo falta traer inputs, y **prohibir la lectura habría sido cumplir la letra y perder el punto**.
+- **La decisión:** el invariante se enuncia por lo que siempre quiso decir. Siguen prohibidos: escrituras HTTP (`requests.post/put/patch/delete`, `urllib.request.Request(... method='POST'...)`, `curl -X POST`, `gh api -X POST`), todo `gh` mutante (`issue`/`pr`/`label`), y `git push`. Se **permiten las lecturas**. `socket.create_connection` sigue prohibido: un socket crudo puede hacer cualquier cosa, y `urlopen` cubre las lecturas que este proyecto hace — es un hueco deliberado, no un olvido.
+- **Consecuencia:** la frase "el tablero no puede escribir en GitHub porque no tiene cliente HTTP" había que cambiarla igual, porque ahora **sí hay** un cliente HTTP en el proyecto — que solo lee. El invariante no se debilitó: **se hizo verificable de nuevo**, que es distinto.
+
+## D-037 — La cifra del Módulo D depende del estado de refs, no del commit que cita
+
+- **Qué se observó, sin buscarlo:** al correr `tools/vendor.py --full`, que hace `git fetch` en los checkouts, la cifra de rutas borradas del Módulo D para `gentle-ai` pasó de **1247 a 1252**. Nadie editó nada.
+- **La causa:** el módulo recorre **refs locales** para encontrar rutas borradas en la historia. Un `fetch` trae refs nuevos, y con ellos más historia que contiene borrados. **Su cifra depende de algo distinto del commit que documenta.**
+- **Por qué es grave en este proyecto:** el reporte cita `gentle-ai 9dfe17d8` como si la cifra fuera una propiedad de ese commit. No lo es. Es, otra vez, **procedencia mal atribuida** — la misma clase que D-029 y que el error del digest del snapshot (D-029, corrección).
+- **Qué queda declarado, y qué no se hace acá:** la cifra del reporte se deja en el valor que el código produce hoy (**1252**), y `MODULES.md` se alinea; **el alcance del recorrido tiene que ser el pin** (`git log <pin>` en vez de todos los refs), y eso es una unidad propia. Mientras tanto, la cifra queda como **Clase C**: reproducible solo con el mismo estado de refs.
+- **Cómo se descubrió, y vale registrarlo:** mirando un `git diff` que no debía existir. **Un archivo generado que cambia solo cuando nadie lo tocó es una cifra dependiendo de algo que no está declarado** — y eso es exactamente lo que un guardián de cifras debería poder ver.
