@@ -55,25 +55,39 @@ documento **no** debe asumir que el lote está íntegramente revisado. **No lo e
 
 ---
 
-## Defecto corregido en este documento (y en `BOARD.md` y `TAGS.md`)
+## Defecto corregido en este documento (y una corrección sobre la corrección)
 
 La lente de confiabilidad de C3b escaló con `insufficient_evidence` sobre seis afirmaciones de
-`STATUS.md`. **Tenía razón, y al verificarlas apareció algo peor que falta de evidencia: una
-cifra inventada.**
+`STATUS.md`. **Tenía razón.** Al verificarlas apareció una cifra con **procedencia mal atribuida**:
 
 * **Lo que decía:** «Distribución derivada (… snapshot `39553742aa7bf1ea`)», y en `BOARD.md` y
   `TAGS.md` la misma cifra presentada como **«reproducible con `python3 tools/metrics.py`»**.
-* **Lo que es verdad:** **ningún comando del proyecto produce ese valor.** `tools/metrics.py` no
-  imprime ningún digest de snapshot. Era una cifra **hardcodeada presentada como derivada** — es
-  decir, exactamente la clase de defecto que este proyecto existe para cazar, cometida en su
-  propia documentación y en su propio archivo de estado.
-* **La corrección:** el digest que **sí** existe y **sí** se produce es el de la proyección
-  derivada del tablero, **`b0a61cf3325ef7f1`**, emitido por `python3 tools/determinism_check.py`.
-  La afirmación falsa se eliminó de los tres documentos.
-* **Y la lección, que quedó en `DECISIONS.md`:** un número con una etiqueta de procedencia al lado
-  no es evidencia. La procedencia hay que **ejecutarla** una vez antes de publicarla.
+* **Lo que estaba mal:** **el productor citado.** `tools/metrics.py` no imprime ningún digest de
+  snapshot, así que quien lo corriera como se le indicaba no encontraba el número. Sigue siendo un
+  defecto —una cifra con el comando equivocado al lado— pero de procedencia, no de fabricación.
+* **Lo que hice después, y fue peor:** di la cifra por **inventada**, escribí que «ningún comando del
+  proyecto produce ese valor» y la **borré** de los tres documentos. **Eso era falso.**
+* **Lo que es verdad, medido:** `39553742aa7bf1ea` es **`sha256("issues.json")[:16]`**, lo produce
+  `board/core.py::snapshot_meta()` y lo expone `/api/health` del tablero:
 
----
+  ```bash
+  curl -s http://127.0.0.1:8770/api/health   # "snapshot": {"sha256": "39553742aa7bf1ea", ...}
+  ```
+
+  **Clase A**: derivada por comando desde un dato del árbol. Queda **restaurada** en los tres
+  documentos con su productor correcto.
+* **Cómo me equivoqué, que es la lección:** busqué el **literal** en el código y funciones llamadas
+  `*digest`. El valor **se calcula en tiempo de ejecución** —no hay literal en ningún lado— y la
+  función se llama `snapshot_meta`. De *"no lo encontré"* concluí *"no existe"*.
+
+> **Para verificar un negativo —«ningún comando lo produce»— hay que enumerar los productores, no
+> buscar el valor.** Un dato calculado en tiempo de ejecución no tiene literal, y una búsqueda
+> fallida no es una prueba de ausencia.
+
+El segundo valor que esta corrección sí retiró, `2779c866aca75dc4…`, **sigue sin productor**: se
+revalidó enumerando *todos* los productores de digests del proyecto (el snapshot, el fixture dorado,
+los módulos y la proyección del tablero y el contrato de decisión, el orden de etiquetas y el split),
+y ninguno lo emite. Ese retiro se sostiene.
 
 ## Cómo verificar cada cifra
 

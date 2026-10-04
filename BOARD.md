@@ -64,7 +64,7 @@ Cada aplicación tiene su propio tablero. Las tarjetas no se cruzan y no hay vis
 [ gentle-ai ]  [ engram ]  [ gentle-shell ]        ← pestañas en la barra superior
 ```
 
-Distribución **derivada por el motor** (Clase C: medida localmente el 2026-10-02 sobre `db/board.db`, que está fuera de git, así que **no** es reproducible desde el artefacto congelado; se reproduce con `python3 board/server.py --ingest --port 8770`). El digest que **sí** emite un comando es el de la proyección derivada: `b0a61cf3325ef7f1` → `python3 tools/determinism_check.py`:
+Distribución **derivada por el motor**, del snapshot **`39553742aa7bf1ea`** — que es `sha256("issues.json")[:16]`, emitido por `board/core.py::snapshot_meta()` y expuesto en `/api/health`. El **digest del snapshot es Clase A** (reproducible por comando desde un dato del árbol); la **distribución por columna es Clase C**, porque se mide sobre `db/board.db`, que está fuera de git: se reproduce con `python3 board/server.py --ingest --port 8770`.
 
 | Aplicación | Total | Entrada | Falta información | Revisión humana | Listo | En manos |
 | --- | --- | --- | --- | --- | --- | --- |

@@ -2,7 +2,7 @@
 
 > **Para quién es esto.** Para quien va a triar en serio y necesita saber exactamente qué está mirando, de dónde sale cada etiqueta, qué NO significa y qué hacer con ella. La versión corta está en [`GLOSSARY.md`](GLOSSARY.md); la misma guía está dentro del tablero con el botón **«¿Qué significa?»**.
 >
-> **Todos los números de este documento se recomputan** desde el snapshot `issues.json` (1.228 issues abiertos) con `python3 tools/metrics.py` y `python3 db/rules.py`. Ninguno está escrito a mano. *(Una versión anterior citaba un «snapshot `39553742aa7bf1ea`» que ningún comando producía; esa cifra se eliminó.)*
+> **Todos los números de este documento se recomputan** desde el snapshot `issues.json` (1.228 issues abiertos) con `python3 tools/metrics.py` y `python3 db/rules.py`. Ninguno está escrito a mano. El snapshot es **`39553742aa7bf1ea`**, es decir `sha256("issues.json")[:16]`, emitido por `board/core.py::snapshot_meta()` y visible en `/api/health` del tablero. *(Corregido: una versión intermedia de este documento lo dio por inexistente porque el comando citado era `tools/metrics.py`, que no lo imprime. El dato era verdadero, con otro productor.)*
 
 ---
 
@@ -430,7 +430,7 @@ python3 test_board.py               # incluye la regresión del filtro por etiqu
 python3 tools/verify_all.py         # todos los checks del proyecto a la vez
 ```
 
-Los conteos de este documento salen del snapshot `issues.json` (1.228 issues abiertos) y se recomputan con `python3 tools/metrics.py`. Si el snapshot cambia, cambian los números: por eso el script los recalcula en vez de leerlos de acá.
+Los conteos de este documento salen del snapshot **`39553742aa7bf1ea`** (`sha256("issues.json")[:16]`, 1.228 issues abiertos) y se recomputan con `python3 tools/metrics.py`. Si el snapshot cambia, cambian los números: por eso el script los recalcula en vez de leerlos de acá.
 
 ---
 

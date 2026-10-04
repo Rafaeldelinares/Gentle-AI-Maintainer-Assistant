@@ -51,6 +51,8 @@ Qué **no** cubre deliberadamente:
 
 Porque permite **auditar**. Si el motor sugirió `P1` para `gentle-shell#1606`, cualquiera puede volver a correr el motor sobre el mismo snapshot y obtener exactamente el mismo `P1`, con la misma regla y la misma evidencia. Sin eso, no habría forma de discutir una sugerencia: sólo se podría creer o no creer.
 
+El snapshot congelado se identifica con **`39553742aa7bf1ea`** — `sha256("issues.json")[:16]`, emitido por `board/core.py::snapshot_meta()` y expuesto en `/api/health`. Citar ese digest es lo que permite afirmar que dos mediciones hablan del mismo dato.
+
 ### El límite del determinismo: el snapshot
 
 Es determinista **dentro de un snapshot**. Si el snapshot cambia (issues nuevos, issues cerrados), los números cambian. Por eso el hash y la fecha del snapshot están **siempre visibles** en la barra superior: un número sin su snapshot no significa nada.

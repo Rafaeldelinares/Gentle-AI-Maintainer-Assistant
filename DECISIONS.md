@@ -294,7 +294,7 @@
 ## D-029 — Ninguna cifra se publica sin un comando que la produzca
 
 - **Qué pasó:** al cerrar el hallazgo `R3-status-md-6-critical-claims` (la lente de confiabilidad de C3b escaló por `insufficient_evidence`), aparecieron **dos cifras inventadas** en la documentación del proyecto:
-  1. `39553742aa7bf1ea`, presentado en `STATUS.md`, `BOARD.md` y `TAGS.md` como el "snapshot" del que salían los números, y explícitamente como **"reproducible con `python3 tools/metrics.py`"**. **Ningún comando producía ese valor:** `metrics.py` no imprime ningún digest de snapshot.
+  1. `39553742aa7bf1ea`, presentado en `STATUS.md`, `BOARD.md` y `TAGS.md` como el "snapshot" del que salían los números, y explícitamente como **"reproducible con `python3 tools/metrics.py`"**. **Lo que estaba mal era el productor citado:** `metrics.py` no imprime ningún digest de snapshot. La cifra era verdadera por otro camino — ver la corrección al final de esta entrada.
   2. `2779c866aca75dc4…`, presentado en `DETERMINISM.md` como el "digest idéntico" de la clasificación del motor entre semillas. **Ningún comando lo producía**, y `tools/determinism_check.py` ni siquiera comprueba la clasificación del motor: cubre los módulos A–D y la proyección del tablero.
 - **Por qué es grave:** es exactamente la clase de defecto que este proyecto existe para cazar —una cifra hardcodeada presentada como derivada— cometida en su propia documentación de estado y de determinismo. La regla del proyecto ("sin cifras escritas a mano") estaba violada por los archivos que **declaraban** cumplirla.
 - **Qué reemplaza a cada una:**
@@ -352,3 +352,31 @@
 - **La prueba de que sirve:** engancharlo movió los conteos del gate de 8 a 9 en modo rápido y de 10 a 11 en completo, así que los documentos quedaron obsoletos **por construcción**. El guardián encontró las cuatro afirmaciones que había que corregir. Un guardián que no caza su propio cambio no sirve.
 - **Lo que NO cubre, declarado:** las cifras métricas en prosa, los valores de los digests, y los conteos escritos en otra forma que la canónica. La convención primero tiene que migrar la prosa vieja, y eso es seguimiento.
 - **Consecuencia mientras tanto:** todo cambio de recuento de tests obliga a un barrido manual con `grep -rn` sobre el repositorio completo, contando ocurrencias antes y después. Queda escrito para que la próxima vez no lo descubra una lente.
+
+## D-033 — El plan de corrección se declara ANTES de aplicar el cambio
+
+- **Qué pasó:** en la corrección del guardián de cifras (`review-73b34d2b598617bb`) declaré el plan de corrección **después** de haber aplicado y commiteado el arreglo. El proveedor entonces **reemitió el mismo binding**, cuyo `target` es el candidato **previo** a la corrección, y lo rechazó con *"does not carry one non-empty matching provider lineage and target token"*. En la unidad anterior, donde el plan se declaró **primero**, el ciclo cerró limpio.
+- **El mecanismo:** el binding del slot de plan está atado al candidato **como estaba antes de la corrección**. Aplicar y commitear primero **cierra esa ventana**: el candidato ya cambió, y el token que el propio proveedor acaba de emitir deja de coincidir.
+- **La secuencia correcta, y no es opcional:**
+  1. `STATUS` → obtener el slot `correction_plan_required`;
+  2. **declarar `correctionLines`** —medido contra el diff real, no estimado— **antes de tocar un solo archivo**;
+  3. **recién ahí** aplicar los cambios;
+  4. **commitear** (sin commit, la proyección no los ve: devuelve `stop` / `corrected_candidate_unavailable`);
+  5. `STATUS` → validación dirigida.
+- **Consecuencia de haberlo invertido:** la corrección quedó aplicada, probada y commiteada, pero **su validación dirigida formal no se pudo pedir**, y la línea quedó estacionada. Una revisión posterior cuyo rango contenga esa corrección la cubre en sustancia.
+- **Por qué queda escrito acá y no solo en el plan local:** el plan ODD vive en `odd/`, que está **fuera de git**. Una regla que solo existe donde nadie la lee no es una regla, es una intención — que es exactamente lo que D-032 documentó sobre las cifras.
+
+## D-034 — Marcadores de lock obsoletos: el diagnóstico que miente
+
+- **El síntoma:** dos `START` seguidos devolvieron `{"operation":"answer-consent", "outcome":"consent-binding-stale"}` con bindings **distintos**, y `diagnostics.message` = *"expired after 10 minutes without an answer"*. `lineage_created: false`, `mutation_performed: false`. **Parecía una pregunta de consentimiento esperando respuesta humana.**
+- **No había ninguna pregunta.** Lo que había eran **dos marcadores de lock obsoletos** —`.git/gentle-ai/REVIEW-MAINTENANCE.lock` y `.git/gentle-ai/review-transactions/v2/LOCK`, ambos de 0 bytes— con la fecha congelada en 11:25/11:29, del ciclo de corrección que murió al cerrarse la ventana del plan (D-033). **Ninguna línea de revisión se escribió durante ~7 horas** y los `START` posteriores no escribieron nada.
+- **El diagnóstico era engañoso:** hablaba de consentimiento cuando el problema era de estado. **Un solo error de secuencia explicaba los tres bloqueos del día**: la ventana del plan perdida → marcadores obsoletos → todo lo posterior reportando consentimiento inexistente.
+- **La receta, reproducible:**
+  1. `stat -c '%n %s bytes %y' .git/gentle-ai/REVIEW-MAINTENANCE.lock .git/gentle-ai/review-transactions/v2/LOCK` → ver tamaño y fecha;
+  2. comparar con `date` y con la última línea escrita en `review-transactions/v2/`;
+  3. **probar que ningún proceso los sostiene**: recorrer `/proc/[0-9]*/fd/*` resolviendo los symlinks. **Cero dueños = seguro borrarlos** — es verificar que nadie está usando la llave antes de sacarla de la cerradura;
+  4. borrarlos → el `START` siguiente **creó la línea al primer intento**.
+- **Qué está probado y qué es hipótesis, y la distinción importa:** está **probado experimentalmente** que sacar esos marcadores destrabó el ciclo. Es **hipótesis** el mecanismo (que el flujo compare la antigüedad del marcador contra ahora y se niegue a avanzar si quedó vieja). Se deja dicho para que nadie lo cite como hecho.
+- **Un detalle que corrige el diagnóstico inicial:** los marcadores **vuelven a existir** tras un ciclo exitoso —con la fecha del `acknowledge`— así que **su presencia es normal**. Lo que estaba mal era su **obsolescencia**, no su existencia.
+- **Aprendizaje lateral:** `pgrep` lista procesos que pueden haber muerto antes de que los mires; para saber si algo está vivo de verdad, `/proc/<pid>/fd` es la fuente.
+- **Qué reportar a `gentle-ai`:** no hay auto-recuperación de marcadores obsoletos, y el diagnóstico apunta al lugar equivocado. Un `consent-binding-stale` que en realidad es un estado trabado costó horas.
