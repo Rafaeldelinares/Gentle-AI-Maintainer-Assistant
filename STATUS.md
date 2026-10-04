@@ -15,9 +15,10 @@
   plantillas traídas **al commit fijado** (`tools/vendor.py --templates-only`) y el venv que el
   paso de contratos necesita. **No corre `--full`**, porque los reportes de módulos recorren la
   historia git de los repositorios auditados y necesitan los checkouts completos: esa mitad la
-  corre una persona, y la diferencia está declarada acá en vez de escondida. *(El workflow en sí
-  no está verificado: nada se pusheó todavía, así que GitHub Actions nunca lo ejecutó; sus pasos
-  se simulan localmente.)*
+  corre una persona, y la diferencia está declarada acá en vez de escondida. **Verificado en la
+  primera publicación:** corrida `37181123862` en `master` → `conclusion: success`, con los cinco
+  pasos en verde —traer las plantillas fijadas, crear el venv, y correr el gate rápido—. Antes de
+  publicar solo estaba simulado localmente; ahora está ejecutado.
 * **Hallazgo abierto (D-037):** la cifra de rutas borradas del **Módulo D** para `gentle-ai`
   pasó de **1247 a 1252** sin que nadie editar vidas: un `git fetch` en los checkouts cambió el
   **estado de refs locales**, y el módulo recorre refs, no solo el commit que cita. **Su cifra
@@ -64,8 +65,8 @@ ellos desde acá.
 | # | Riesgo | Estado real | Vía de cierre |
 | --- | --- | --- | --- |
 | 1 | **Hallazgos sellados de C1a.** `review-7cb7f5fd9a7b5c39` tiene 4 lentes corridas, con hallazgos **producidos y NO LEÍDOS** sobre `board/core.py`, dentro del almacén nativo del proveedor. | Perdidos mientras no los recupere el host. | **Ninguna desde acá.** `external.authorize_recovery` no es una operación del canal de captura, y `recover` exige valores nativos no derivables (D-028). |
-| 2 | **La validación dirigida funciona; la línea de C3b quedó detenida.** El slot `provider_targeted_validator` **sí se puede entregar**: el 2026-10-03 validó una corrección de 8 líneas y la revisión cerró en `approved`. El rechazo es **intermitente**, no una incapacidad (D-028, diagnóstico corregido). | Una corrección quedó formalmente validada; la de C3b no, porque esa línea se detuvo terminalmente por un rechazo hoy considerado transitorio. | Rehacer la revisión del rango que contiene `54a8498`, o declarar perdida esa validación formal. **Decisión del mantainer, no bloqueo técnico.** |
-| 3 | **C1a y C1b no revisables por separado.** El candidato por rango es `baseRef..HEAD`, así que las unidades anteriores a la cola quedaron fuera del alcance revisable. | Confirmado por medición (ver D-027). | Solo revisando el rango completo, que excede el presupuesto de lentes. |
+| 1 | **La validación dirigida funciona; la línea de C3b quedó detenida.** El slot `provider_targeted_validator` **sí se puede entregar**: el 2026-10-03 validó una corrección de 8 líneas y la revisión cerró en `approved`. El rechazo es **intermitente**, no una incapacidad (D-028, diagnóstico corregido). | Una corrección quedó formalmente validada; la de C3b no, porque esa línea se detuvo terminalmente por un rechazo hoy considerado transitorio. | Rehacer la revisión del rango que contiene `54a8498`, o declarar perdida esa validación formal. **Decisión del mantainer, no bloqueo técnico.** |
+| 2 | **C1a y C1b no revisables por separado.** El candidato por rango es `baseRef..HEAD`, así que las unidades anteriores a la cola quedaron fuera del alcance revisable. | Confirmado por medición (ver D-027). | Solo revisando el rango completo, que excede el presupuesto de lentes. |
 
 **Consecuencia que no se disimula:** estos tres puntos viajan con el proyecto. Un lector de este
 documento **no** debe asumir que el lote está íntegramente revisado. **No lo está.**
@@ -330,12 +331,11 @@ El orden se puede reordenar solo con una decisión registrada en `DECISIONS.md`.
 
 | # | Decision | Options | Blocks |
 | --- | --- | --- | --- |
-| 1 | Push de `6be5093` | pushear / dejar local | nada |
 | 2 | Línea estacionada `review-7cb7f5fd9a7b5c39` | que el host la recupere / abandonarla perdiendo los hallazgos | los hallazgos de 4 lentes sobre `board/core.py` |
 | 3 | Reordenar el plan (herramienta de etiquetado antes) | mantener el orden / modo sombra primero / otro | nada hoy |
-| 4 | Licencia | MIT está puesta; confirmar o cambiar | nada hoy |
-| 5 | Contacto externo / publicación | no solicitado; la herramienta queda interna hasta que Rafael apruebe | cualquier contacto con maintainers |
-| 6 | Muestra etiquetada fresca | Rafael etiqueta ~100–150 issues | toda afirmación de precisión |
+| 3 | Licencia | MIT está puesta; confirmar o cambiar | nada hoy |
+| 4 | Contacto externo / publicación | no solicitado; la herramienta queda interna hasta que Rafael apruebe | cualquier contacto con maintainers |
+| 5 | Muestra etiquetada fresca | Rafael etiqueta ~100–150 issues | toda afirmación de precisión |
 
 Ninguna pregunta de arriba bloquea el desarrollo: el trabajo avanza en el orden propuesto hasta
 que Rafael diga otra cosa.
