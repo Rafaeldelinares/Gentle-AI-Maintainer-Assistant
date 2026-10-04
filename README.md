@@ -100,6 +100,7 @@ The walkthrough uses illustrative, clearly synthetic issue numbers so that no in
 ├── AUDIT.md                # Read-only adversarial audit of the rules
 ├── STATUS.md               # Phase status, commit hashes and stop-and-wait gate
 ├── SELF-EXAMINATION.md     # What this tool can and cannot say, written for the maintainers it reads
+├── SELF-EXAMINATION.es.md  # El mismo documento en castellano (figuras idénticas, ambas verificadas)
 ├── OBSERVABILITY.md        # Canonical raw GitHub URLs for every reviewable artifact
 ├── EVALUATION.md           # Self-contained external audit guide (code, tests, metrics)
 ├── gold-p0-p1.md           # Human-review gold set for candidate P0 and P1 rule matches

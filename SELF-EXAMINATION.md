@@ -4,6 +4,10 @@
 > `gentle-shell` — the people whose open issues this reads. It is the honest half of the
 > project: not what we built, but what it is entitled to claim.
 >
+> **Spanish counterpart: [`SELF-EXAMINATION.es.md`](SELF-EXAMINATION.es.md).** Same document,
+> both languages, and the same figures must hold in both — the figures guard scans both
+> files, so the numeric claims in each are checked against reality rather than transcribed.
+>
 > Frozen snapshot: **1228 open issues** across three repositories, at the commits recorded
 > in `tools/vendor.py`. Read-only: this project writes nothing into any repository, and
 > every row it produces is `veredicto_humano: pendiente`.
