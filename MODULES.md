@@ -1,8 +1,8 @@
 # MODULES.md — Mechanical Read-Only Modules (A, B, C, D, E)
 
-> **What this file is.** The four modules that need **no human labels** to be useful: they compare each report with its own issue form, correlate probable duplicates by shared error signatures, surface cross-repository references, and flag references to source that no longer exists. Source, method, output and limits are all here.
+> **What this file is.** The five modules that need **no human labels** to be useful: they compare each report with its own issue form, correlate probable duplicates by shared error signatures, surface cross-repository references, flag references to source that no longer exists, and group the rest by **where a change would land**. Source, method, output and limits are all here.
 
-> **Provenance:** module source at commit `7638f09`. Reports regenerate deterministically from the frozen snapshot (`issues.json`, 1,228 issues); `tools/determinism_check.py` proves byte-identical output across processes.
+> **Provenance:** module source in `modules/`. This line used to name a frozen commit, which went stale the moment the modules changed; the revision you are reading is the one git reports: `git log -1 --format=%H -- modules/`. Reports regenerate deterministically from the frozen snapshot (`issues.json`, 1,228 issues); `tools/determinism_check.py` proves byte-identical output across processes.
 
 > **Read-only.** No module writes to GitHub, to `cross_refs`, or to the dataset. No `veredicto_humano` is ever filled. Nothing is closed or relabelled.
 

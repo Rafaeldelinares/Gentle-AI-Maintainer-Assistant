@@ -313,6 +313,38 @@ about importance.
   - https://github.com/Gentleman-Programming/gentle-ai/issues/4589
 - …and 3 more in this subsystem
 
+## Do the clusters collapse?
+
+A pile of reports in one directory invites the next question: is it one problem
+reported many times, or many problems landing in the same place? The deterministic
+answer is the evidence signatures — an exception name, an error code, a Go frame, an
+exit status, a long quoted error string. Issues that share no signature are not, by
+that evidence, the same problem.
+
+| Repository | Subsystem | Issues | Carrying a signature | Distinct signatures | Largest repeated group |
+| --- | --- | --- | --- | --- | --- |
+| `gentle-shell` | `extensions` | 99 | 60 | **58** | 3 |
+| `gentle-shell` | `lib` | 98 | 56 | **56** | — |
+| `gentle-ai` | `internal/cli` | 55 | 41 | **41** | — |
+| `gentle-shell` | `tests` | 39 | 18 | **18** | — |
+| `gentle-ai` | `docs` | 35 | 12 | **12** | — |
+| `gentle-ai` | `internal/reviewtransaction` | 25 | 17 | **17** | — |
+| `gentle-shell` | `docs` | 19 | 10 | **9** | 2 |
+| `gentle-ai` | `internal/assets/skills` | 16 | 6 | **6** | — |
+| `gentle-ai` | `internal/tui` | 16 | 8 | **8** | — |
+| `gentle-ai` | `internal/components/sdd` | 15 | 6 | **6** | — |
+
+**Read plainly: they do not collapse.** The largest repeated group across every
+cluster above is a handful of issues, so a directory carrying many reports is carrying
+many *different* problems. Concentration here is **accumulation, not duplication** —
+a fact about where problems land, which is why this module reports location and never
+claims a shared cause.
+
+- The one repeated signature in `gentle-shell` `extensions` is shared by 3 issues (gentle-shell#531, gentle-shell#545, gentle-shell#962); every other issue in that cluster carries evidence of its own, or none at all.
+- This is **absence of evidence, not proof of distinctness**: an issue with no
+  signature is uncorrelated evidence, not established as a different problem. Same for
+  two issues whose signatures differ but whose cause may be one.
+
 ## Hotspot files
 
 The directory view hides a single file carrying most of a directory's reports. Same

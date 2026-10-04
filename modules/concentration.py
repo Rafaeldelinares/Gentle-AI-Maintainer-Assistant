@@ -31,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "db"))
 from common import (  # noqa: E402
     REPO_SLUGS, issue_body, issue_link, issue_ref, issue_title, load_issues, write_report,
 )
+from duplicates import make_signatures  # noqa: E402
 from obsolete import extract_references  # noqa: E402
 from rules import classify_issue_deterministically  # noqa: E402
 
@@ -64,9 +65,31 @@ def is_grey(issue):
     return band is None
 
 
+def collapse_rows_for(top_subsystems, by_ref):
+    """Per cluster: how many distinct evidence signatures, and the largest repeated group.
+
+    This exists because saying "a cluster is one place to look" was, on its own, an assertion.
+    The question a reader asks next is whether the pile is one problem or many, and that question
+    has a deterministic answer worth showing: the signatures.
+    """
+    rows = []
+    for (slug, subsys), refs in top_subsystems[:TOP_CLUSTERS]:
+        ordered = sorted(refs)
+        sigs = {ref: make_signatures(by_ref[ref]) for ref in ordered}
+        carrying = [ref for ref in ordered if sigs[ref]]
+        groups = collections.defaultdict(list)
+        for ref in carrying:
+            groups[frozenset(sigs[ref])].append(ref)
+        ordered_groups = sorted(groups.values(), key=lambda group: (-len(group), group))
+        biggest = ordered_groups[0] if ordered_groups and len(ordered_groups[0]) > 1 else []
+        rows.append((slug, subsys, len(ordered), len(carrying), len(groups), biggest))
+    return rows
+
+
 def main():
     issues = load_issues()
 
+    by_ref = {issue_ref(issue): issue for issue in issues}
     by_subsystem = collections.defaultdict(set)
     by_file = collections.defaultdict(set)
     grey_by_subsystem = collections.defaultdict(set)
@@ -99,6 +122,7 @@ def main():
     # reported by size, and the report states how much of the corpus they cover.
     top_subsystems = sorted(by_subsystem.items(), key=lambda kv: (-len(kv[1]), kv[0]))
     top_files = sorted(by_file.items(), key=lambda kv: (-len(kv[1]), kv[0]))[:TOP_FILES]
+    collapse_rows = collapse_rows_for(top_subsystems, by_ref)
     covered = set().union(*[refs for _k, refs in top_subsystems[:TOP_CLUSTERS]]) if by_subsystem else set()
 
     lines = []
@@ -141,6 +165,37 @@ def main():
         if len(ordered) > MAX_REFS_PER_CLUSTER:
             lines.append(f"- …and {len(ordered) - MAX_REFS_PER_CLUSTER} more in this subsystem")
         lines.append("")
+    lines.append("## Do the clusters collapse?")
+    lines.append("")
+    lines.append("A pile of reports in one directory invites the next question: is it one problem")
+    lines.append("reported many times, or many problems landing in the same place? The deterministic")
+    lines.append("answer is the evidence signatures — an exception name, an error code, a Go frame, an")
+    lines.append("exit status, a long quoted error string. Issues that share no signature are not, by")
+    lines.append("that evidence, the same problem.")
+    lines.append("")
+    lines.append("| Repository | Subsystem | Issues | Carrying a signature | Distinct signatures | "
+                 "Largest repeated group |")
+    lines.append("| --- | --- | --- | --- | --- | --- |")
+    for slug, subsys, total, carrying, distinct, biggest in collapse_rows:
+        lines.append(f"| `{slug}` | `{subsys}` | {total} | {carrying} | **{distinct}** | "
+                     f"{len(biggest) if biggest else '—'} |")
+    lines.append("")
+    lines.append("**Read plainly: they do not collapse.** The largest repeated group across every")
+    lines.append("cluster above is a handful of issues, so a directory carrying many reports is carrying")
+    lines.append("many *different* problems. Concentration here is **accumulation, not duplication** —")
+    lines.append("a fact about where problems land, which is why this module reports location and never")
+    lines.append("claims a shared cause.")
+    lines.append("")
+    for slug, subsys, _total, carrying, _distinct, biggest in collapse_rows:
+        if len(biggest) > 1:
+            lines.append(f"- The one repeated signature in `{slug}` `{subsys}` is shared by "
+                         f"{len(biggest)} issues ({', '.join(biggest)}); every other issue in that "
+                         f"cluster carries evidence of its own, or none at all.")
+            break
+    lines.append("- This is **absence of evidence, not proof of distinctness**: an issue with no")
+    lines.append("  signature is uncorrelated evidence, not established as a different problem. Same for")
+    lines.append("  two issues whose signatures differ but whose cause may be one.")
+    lines.append("")
     lines.append("## Hotspot files")
     lines.append("")
     lines.append("The directory view hides a single file carrying most of a directory's reports. Same")
