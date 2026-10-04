@@ -25,12 +25,12 @@ Es todo lo que el sistema **calcula** desde el snapshot congelado:
 | --- | --- | --- |
 | Contrato de decisión del motor | `decide(..., include_evidence=True)` sobre los primeros 400 issues, dos semillas | digest idéntico: `python3 tools/determinism_check.py` → `engine decision contract: 29528cd3d38784c2…` |
 | Proyección derivada del tablero | ingest fresco en base temporal, dos semillas | digest idéntico: `python3 tools/determinism_check.py` → `board derived projection: b0a61cf3325ef7f1…` |
-| Reportes de módulos A–D | dos procesos distintos, dos semillas | cuatro digests byte-idénticos: `python3 tools/determinism_check.py` → A `0c0ccaca24fb234b…`, B `7e63683152dd4e70…`, C `684fcc589d8629bc…`, D `7cd51c438a563c4c…` |
+| Reportes de módulos A–D | dos procesos distintos, dos semillas | cuatro digests byte-idénticos: `python3 tools/determinism_check.py` → A `0c0ccaca24fb234b…`, B `7e63683152dd4e70…`, C `684fcc589d8629bc…`, D: **por comando, no por valor** — depende del estado de refs locales (D-037); hoy `8fbadbf59b5fabaa…`; y **E** `0990841909b4a75f…` |
 | Cifras publicadas | `tools/metrics.py` las recalcula | ninguna escrita a mano |
 | Contratos de datos | `schemas/validate.py` | 12/12 |
 
 ```bash
-python3 tools/determinism_check.py     # los seis digests de salida derivada byte-idénticos entre procesos
+python3 tools/determinism_check.py     # los siete digests de salida derivada byte-idénticos entre procesos
 python3 tools/verify_all.py --full     # todo el gate, incluido lo anterior
 ```
 

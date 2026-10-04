@@ -41,6 +41,7 @@ MODULES = [
     ("Module B — duplicates", ROOT / "modules" / "duplicates.py", ROOT / "report-duplicates.md"),
     ("Module C — cross-repo links", ROOT / "modules" / "cross_repo.py", ROOT / "report-cross-links.md"),
     ("Module D — possibly obsolete", ROOT / "modules" / "obsolete.py", ROOT / "report-obsolete.md"),
+    ("Module E — concentration", ROOT / "modules" / "concentration.py", ROOT / "report-concentration.md"),
 ]
 
 SEEDS = ["1", "7"]

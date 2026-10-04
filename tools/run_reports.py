@@ -19,6 +19,7 @@ MODULES = [
     ("Module B — duplicates", ROOT / "modules" / "duplicates.py"),
     ("Module C — cross-repo links", ROOT / "modules" / "cross_repo.py"),
     ("Module D — possibly obsolete", ROOT / "modules" / "obsolete.py"),
+    ("Module E — concentration", ROOT / "modules" / "concentration.py"),
 ]
 
 

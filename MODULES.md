@@ -1,4 +1,4 @@
-# MODULES.md — Mechanical Read-Only Modules (A, B, C, D)
+# MODULES.md — Mechanical Read-Only Modules (A, B, C, D, E)
 
 > **What this file is.** The four modules that need **no human labels** to be useful: they compare each report with its own issue form, correlate probable duplicates by shared error signatures, surface cross-repository references, and flag references to source that no longer exists. Source, method, output and limits are all here.
 
@@ -96,7 +96,39 @@ python3 tools/determinism_check.py   # fail if any report changes across process
 
 ---
 
-## 5. Source (verbatim, at commit `7638f09`)
+## 5. Module E — Concentration
+
+**Question it answers:** where do the reports cluster? A pile of issues is unreadable; a handful of
+directories is a plan.
+
+**Method:** extract the repository paths each issue names, with the same deterministic extractor
+Module D uses, and group them by **the directory where a change would land**, capped at three
+levels. `internal/components/sdd/inject.go` becomes `internal/components/sdd`;
+`extensions/gentle-ai.ts` becomes `extensions`. The same data is reported a second time by
+**hotspot files**, because the directory view hides the case where one file carries most of a
+directory's reports — which is exactly what happens in `gentle-shell`: 99 reports in `extensions`,
+51 of them in one file.
+
+**Grouping never crosses repositories.** A shared directory name is not a relationship, and merging
+would invent one.
+
+**What it deliberately does not do:** it does not prioritise. Priority is a judgement about impact,
+and the snapshot carries no deterministic proxy for it — no SLA, no severity field, no
+affected-user count. It reports location, which is a fact about the text, and nothing else.
+
+**Result:** 458 of 1,228 issues name at least one path; the top fifteen subsystems cover 326 of them
+(71%). Of those, 251 are issues the engine leaves without a band — the ones a cluster can reach.
+The rest name no path at all and no rule reaches them; the report counts them rather than implying
+them away.
+
+**Its limits:** a location named in prose without a path lands in no cluster; only the top fifteen
+subsystems and top twelve files are shown with their issues; the extractor takes the first few paths
+per issue, so a report naming many files is attributed to the ones it names first.
+
+**Reproduce with** `python3 modules/concentration.py` → `report-concentration.md`. Requires no
+vendored checkouts and no labels.
+
+## 6. Source (verbatim, at commit `7638f09`)
 
 ### `modules/common.py`
 
