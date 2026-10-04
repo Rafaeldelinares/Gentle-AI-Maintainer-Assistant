@@ -65,8 +65,8 @@ ellos desde acá.
 | # | Riesgo | Estado real | Vía de cierre |
 | --- | --- | --- | --- |
 | 1 | **Hallazgos sellados de C1a.** `review-7cb7f5fd9a7b5c39` tiene 4 lentes corridas, con hallazgos **producidos y NO LEÍDOS** sobre `board/core.py`, dentro del almacén nativo del proveedor. | Perdidos mientras no los recupere el host. | **Ninguna desde acá.** `external.authorize_recovery` no es una operación del canal de captura, y `recover` exige valores nativos no derivables (D-028). |
-| 1 | **La validación dirigida funciona; la línea de C3b quedó detenida.** El slot `provider_targeted_validator` **sí se puede entregar**: el 2026-10-03 validó una corrección de 8 líneas y la revisión cerró en `approved`. El rechazo es **intermitente**, no una incapacidad (D-028, diagnóstico corregido). | Una corrección quedó formalmente validada; la de C3b no, porque esa línea se detuvo terminalmente por un rechazo hoy considerado transitorio. | Rehacer la revisión del rango que contiene `54a8498`, o declarar perdida esa validación formal. **Decisión del mantainer, no bloqueo técnico.** |
-| 2 | **C1a y C1b no revisables por separado.** El candidato por rango es `baseRef..HEAD`, así que las unidades anteriores a la cola quedaron fuera del alcance revisable. | Confirmado por medición (ver D-027). | Solo revisando el rango completo, que excede el presupuesto de lentes. |
+| 2 | **La validación dirigida funciona; la línea de C3b quedó detenida.** El slot `provider_targeted_validator` **sí se puede entregar**: el 2026-10-03 validó una corrección de 8 líneas y la revisión cerró en `approved`. El rechazo es **intermitente**, no una incapacidad (D-028, diagnóstico corregido). | Una corrección quedó formalmente validada; la de C3b no, porque esa línea se detuvo terminalmente por un rechazo hoy considerado transitorio. | Rehacer la revisión del rango que contiene `54a8498`, o declarar perdida esa validación formal. **Decisión del mantainer, no bloqueo técnico.** |
+| 3 | **C1a y C1b no revisables por separado.** El candidato por rango es `baseRef..HEAD`, así que las unidades anteriores a la cola quedaron fuera del alcance revisable. | Confirmado por medición (ver D-027). | Solo revisando el rango completo, que excede el presupuesto de lentes. |
 
 **Consecuencia que no se disimula:** estos tres puntos viajan con el proyecto. Un lector de este
 documento **no** debe asumir que el lote está íntegramente revisado. **No lo está.**
@@ -331,8 +331,8 @@ El orden se puede reordenar solo con una decisión registrada en `DECISIONS.md`.
 
 | # | Decision | Options | Blocks |
 | --- | --- | --- | --- |
-| 2 | Línea estacionada `review-7cb7f5fd9a7b5c39` | que el host la recupere / abandonarla perdiendo los hallazgos | los hallazgos de 4 lentes sobre `board/core.py` |
-| 3 | Reordenar el plan (herramienta de etiquetado antes) | mantener el orden / modo sombra primero / otro | nada hoy |
+| 1 | Línea estacionada `review-7cb7f5fd9a7b5c39` | que el host la recupere / abandonarla perdiendo los hallazgos | los hallazgos de 4 lentes sobre `board/core.py` |
+| 2 | Reordenar el plan (herramienta de etiquetado antes) | mantener el orden / modo sombra primero / otro | nada hoy |
 | 3 | Licencia | MIT está puesta; confirmar o cambiar | nada hoy |
 | 4 | Contacto externo / publicación | no solicitado; la herramienta queda interna hasta que Rafael apruebe | cualquier contacto con maintainers |
 | 5 | Muestra etiquetada fresca | Rafael etiqueta ~100–150 issues | toda afirmación de precisión |
