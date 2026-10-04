@@ -16,6 +16,19 @@
 
 ---
 
+## Install and run
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -e ".[contracts]"      # the only extra is jsonschema, for the contracts
+.venv/bin/maintainer-assistant check         # the gate
+```
+
+`check` is the one that matters: it is what CI runs on every push and what a reviewer should run.
+`maintainer-assistant --help` lists the rest — the local board, the module reports, the pinned
+input fetch and the figures guard — and every subcommand prints the file it runs, so nothing hides
+behind a friendly name.
+
 ## 🎯 Executive Summary & Purpose
 
 Managing multi-repository agent ecosystems creates unique maintenance bottlenecks:

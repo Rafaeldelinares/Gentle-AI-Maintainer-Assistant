@@ -11,6 +11,13 @@
 * **El lote del tablero ESTÁ commiteado**, en seis unidades encadenadas y en el remoto:
   `2d59094` (C1a dominio) · `d35ffbb` (C1b servidor/UI) · `28174e5` (C2 medición) ·
   `9f32cb1` (C3a docs) · `806a466` (C3b índices) · `6be5093` (corrección de D-027).
+* **Versión:** **`0.1.0`**, declarada en `pyproject.toml` y etiquetada como **`v0.1.0`**.
+  Es la primera versión etiquetada y el piso de Python es `>=3.12`, **lo verificado** (CI corre 3.12
+  y el autor corre 3.14): declarar un piso no probado sería la misma clase de afirmación que este
+  proyecto rechaza en todo lo demás.
+* **Puerta de entrada única:** `maintainer-assistant`, instalable con `pip install -e ".[contracts]"`,
+  sobre los veintiún scripts que antes había que conocer de memoria. Imprime el archivo que va a
+  correr, y lee la versión del `pyproject.toml` en vez de repetirla.
 * **CI:** `.github/workflows/gate.yml` corre el **gate rápido** en cada push, con las
   plantillas traídas **al commit fijado** (`tools/vendor.py --templates-only`) y el venv que el
   paso de contratos necesita. **No corre `--full`**, porque los reportes de módulos recorren la

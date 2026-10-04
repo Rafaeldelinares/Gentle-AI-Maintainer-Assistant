@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gentle-ai-maintainer-assistant"
+version = "0.1.0"
+description = "Read-only triage and maintainer assistance for the Gentle-AI ecosystem"
+readme = "README.md"
+# The floor is the lower of the two environments actually verified: CI runs 3.12 and the
+# author runs 3.14. 3.10 and 3.11 are untested, and declaring an untested floor would be the
+# same class of claim this project refuses everywhere else.
+requires-python = ">=3.12"
+license = { text = "MIT" }
+keywords = ["triage", "maintainers", "issues", "deterministic", "read-only"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Software Development :: Quality Assurance",
+]
+# The runtime is the standard library. jsonschema is needed only by the data-contract validator,
+# so it is an extra rather than a dependency: the gate works without it and says which step it
+# skipped, which is the behaviour the whole project argues for.
+dependencies = []
+
+[project.optional-dependencies]
+contracts = ["jsonschema"]
+
+[project.scripts]
+maintainer-assistant = "maintainer_assistant:main"
+
+[tool.setuptools]
+py-modules = ["maintainer_assistant"]

@@ -435,7 +435,10 @@ def run():
                 return body
 
         try:
-            with _urlreq.urlopen(req, data=data, timeout=5) as res:
+            # This POST targets the local test server built two lines up, never a third
+            # party: `base` is http://127.0.0.1:<port>. The marker is the checker's own
+            # documented-exception form.
+            with _urlreq.urlopen(req, data=data, timeout=5) as res:  # must never leave this machine
                 return res.status, parse(res)
         except _urlerr.HTTPError as exc:
             return exc.code, parse(exc)

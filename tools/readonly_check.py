@@ -27,7 +27,10 @@ ROOT = Path(__file__).resolve().parent.parent
 # Only the project's own executable code. `products/` holds third-party checkouts and
 # markdown docs describe procedures rather than execute them.
 SCAN_DIRS = ["db", "schemas", "tools", "modules", "board"]
-SCAN_FILES = ["test_rules.py"]
+# Root-level scripts are scanned by glob, not by name. The list used to name a single file, so
+# any new root script escaped the invariant silently -- which is exactly what
+# maintainer_assistant.py would have done. A checker whose coverage depends on someone
+# remembering to update it is not a checker.
 CODE_SUFFIXES = (".py", ".sh", ".bash", ".sql")
 SELF = Path(__file__).resolve()
 
@@ -66,9 +69,8 @@ def iter_targets():
         for p in sorted(base.rglob("*")):
             if p.is_file() and p.suffix in CODE_SUFFIXES and p.resolve() != SELF:
                 yield p
-    for f in SCAN_FILES:
-        p = ROOT / f
-        if p.exists():
+    for p in sorted(ROOT.glob("*.py")):
+        if p.is_file() and p.resolve() != SELF:
             yield p
 
 
