@@ -6,6 +6,85 @@
 
 ---
 
+## Reanudación — objetivo vigente, hallazgos y unidades abiertas
+
+> Esta sección existe para que una sesión nueva **no dependa de la memoria** del agente.
+> El plan vive más abajo, en «What is missing»; acá va solo lo que esta etapa agregó.
+
+**Objetivo vigente (Riel 2).** Darle al área gris una **vista de sistema** en vez de una
+clasificación, y escribir encima el **autoexamen**. Dos premisas cambiaron por medición, y
+las dos están abajo. El propósito declarado del proyecto es que estos instrumentos le sirvan
+a los responsables de los productos **aunque nadie los adopte**: por eso el autoexamen está
+escrito para el lector y no para nosotros.
+
+**Audiencia real, corregida.** Los responsables de `gentle-ai`, `engram` y `gentle-shell`
+están **leyendo este repositorio** para uso posible o como fuente de ideas. Son lectores, no
+operadores: `human_activity: 0` en el tablero mide operación, no interés. La superficie de
+entrega es **este repositorio**, no una aplicación local.
+
+Los dos documentos de lectura, hermanos y declarados entre sí (mismas cifras, las dos
+verificadas por el guardián):
+
+* `SELF-EXAMINATION.md` — inglés.
+* `SELF-EXAMINATION.es.md` — castellano, pedido explícitamente por el dueño.
+
+### Esta etapa, en commits
+
+| Commit | Qué | Revisión nativa |
+| --- | --- | --- |
+| `85a8026` | Module E — agrupación por concentración (verificado por CI en entorno limpio) | **Estacionada.** `review-1bc246601e1406ed`: el relay del host cortó a los 989 s sin enviar ningún revisor. |
+| `cc6b6d5` | Reporte acotado de 843 a 360 líneas | **Estacionada.** `review-727149f2d4cf51b9`: cortó a los 951 s. Acotar el candidato a la mitad **no movió el muro**. |
+| `c6c7a61` | `SELF-EXAMINATION.md` + la colapsabilidad hecha reproducible | **Estacionada.** `review-1e103f6c34f61892`: HEAD avanzó antes de que corrieran las lentes. |
+| `7d30b02` | `SELF-EXAMINATION.es.md` | **Aprobada y quemada.** `review-2e107f14861206ad`: tier `low`, `non_executable_only`, **cero lentes**. |
+
+### Hallazgos que cambiaron el rumbo
+
+1. **Los clusters NO colapsan.** La premisa era que agrupar revelaría causas raíz escondidas
+   (muchos reportes = un problema). Dos instrumentos independientes dicen que no:
+   `gentle-shell` `extensions` 99 issues → **58 firmas de evidencia distintas** y un grupo
+   repetido máximo de 3; `lib` 98 → 56; `gentle-ai` `internal/cli` 55 → 41. En todo el top
+   diez hay **4** grupos de títulos parecidos, todos de 2–3, y **todos son pedidos de
+   funcionalidad, no bugs**. La concentración es **acumulación, no duplicación**. Productor:
+   `python3 modules/concentration.py`, sección «Do the clusters collapse?».
+2. **«718 issues sin clasificar» estaba mal por un 45%.** 255 ya estaban siendo enviados a una
+   columna bloqueante, y quedan unos 400 sin banda, sin columna sugerida, completos y sin
+   bandera. **La aritmética 255/400 es Clase C: no tiene productor commiteado**, y así está
+   declarada dentro de los dos documentos. Solo el 718 es reproducible (`decide()` devuelve
+   `band: None`).
+3. **El muro del relay es de tipo, no de tamaño.** Un cambio **sin código ejecutable** es tier
+   `low` y **no invoca lentes**: cierra al instante (`review-2e107f14861206ad`, 243 líneas). El
+   muro solo golpea a las unidades que cargan código, y hoy le pegó a las dos que lo cargaban
+   —agravado porque la misma unidad arrastraba 843 líneas de reporte generado que no
+   necesitaban ninguna lente—. **Regla que sale de acá: separar documentación de código en
+   commits distintos.**
+4. **Una cifra sin productor no se publica, ni siquiera en un documento honesto.** El hallazgo
+   de la colapsabilidad vivía en un script descartable; se convirtió en `collapse_rows_for`
+   dentro del Módulo E **antes** de aparecer en el autoexamen. El reporte ahora prueba el
+   hallazgo en vez de afirmarlo.
+
+### Unidades abiertas declaradas por esta etapa
+
+| # | Qué | Qué necesita para cerrar |
+| --- | --- | --- |
+| 1 | Revisión de lentes del unit de **código** del Módulo E | `GENTLE_PI_REVIEW_RELAY_PI_TIMEOUT_MS` en el entorno del host (techo 2 h), o un candidato donde el código no viaje junto al reporte generado. **La unidad ya está commiteada, pusheada y verificada por CI en limpio**: falta la lente, nada más. |
+| 2 | Aritmética del gris como módulo | productor propio; hoy es Clase C. |
+| 3 | Chequeo de deriva entre las dos versiones del autoexamen | hoy es una medición ad-hoc (68 cifras en cada una, multiconjunto idéntico), no un chequeo. Los números en forma canónica **sí** están cubiertos por el guardián. |
+| 4 | D-037 (Módulo D recorre refs locales, no el pin) | acotar el recorrido al pin; su cifra es Clase C mientras tanto. |
+
+### Reanudar sin memoria
+
+```
+git log --oneline -6                  # esta etapa
+python3 tools/verify_all.py --full    # el gate
+python3 tools/figures_check.py        # las cifras publicadas contra la realidad
+python3 tools/determinism_check.py    # los digests de los reportes generados
+```
+
+El ledger de revisiones, actualizado con esta etapa, está en la tabla de arriba y en
+«Revisiones nativas». Un `action: collect` reofrecido **no** se relanza sin STATUS fresco.
+
+---
+
 ## Estado actual
 
 * **El lote del tablero ESTÁ commiteado**, en seis unidades encadenadas y en el remoto:
@@ -51,6 +130,10 @@
 | C3b — índices y promesas | `806a466` | 332 | **Detenida.** `review-4b205b183f6e3028` escaló a `action: stop` terminal por `insufficient_evidence`, hallazgo `R3-status-md-6-critical-claims`. Ver «Defecto corregido en este documento». |
 | C1b, C2, C3a | `d35ffbb`, `28174e5`, `9f32cb1` | — | **No revisables por separado.** El candidato por rango es `baseRef..HEAD`, así que solo quedó revisable la cola del rango. |
 | Unidad de índices y chequeos | sin commit propio | 375 | 4 lentes **corrieron** → 1 CRITICAL (contradicciones de recuentos), corregido en 8 líneas. **Validación dirigida PENDIENTE** por el defecto D-028. |
+| **Module E — concentración** | `85a8026` | 1.082 | **Estacionada.** `review-1bc246601e1406ed`: 4 lentes emitidas, relay cortado a los 989 s, **0 revisores enviados, 0 mutaciones**. Las 4 lentes nunca llegaron a correr. |
+| **Reporte acotado** | `cc6b6d5` | 603 | **Estacionada.** `review-727149f2d4cf51b9`: mismo muro (951 s) con el prompt a la mitad. |
+| **Autoexamen (documentos)** | `c6c7a61` | 323 | **Estacionada.** `review-1e103f6c34f61892`: creada, HEAD avanzó antes de la corrida → `scope_changed`. |
+| **Autoexamen en castellano** | `7d30b02` | 243 | **Aprobada y quemada.** `review-2e107f14861206ad`: tier `low`, `non_executable_only`, `selected_lenses: []`, evidencia `gentle-ai.review-acknowledged/v1`. |
 
 * **Hallazgos reales encontrados por las lentes:** **6 CRITICAL**, todos introducidos por este
   trabajo y todos corregidos — path traversal en `/static/`, 500 por input inválido, README con
@@ -315,8 +398,11 @@ Comando único para todas: `python3 tools/metrics.py`.
    tablero recibiendo un `conn` crudo, y `sqlite3` dentro del motor— **sin reescritura**. La
    evidencia y las alternativas rechazadas están en `DECISIONS.md` D-030. El plan vive en
    `odd/tasks/hexagonal-seams.md`, **fuera de git a propósito** (estado local de Pi), así que
-   un revisor no puede leerlo: por eso el alcance quedó registrado en la raíz. Los puntos 2
-   y 5 de esta lista **dependen** de estas costuras.
+   un revisor no puede leerlo: por eso el alcance quedó registrado en la raíz. **Estado:**
+   la costura 1 (puerto de decisión, `decide()` en `db/rules.py`, `board/explain.py` de 164 a
+   97 líneas sin tocar ningún `RE_*`) está hecha y revisada (`4d0de6b`, `review-ea2852e9be39e050`,
+   aprobada y quemada). **Faltan las costuras 2 y 3:** el puerto de almacenamiento del tablero
+   y sacar `sqlite3` del motor. El punto 5 de esta lista **depende** de la costura 2.
 2. **Vista de sistema:** agregación por clase raíz (313 reportes con los mismos campos faltantes =
    un problema de plantilla, no 313 tareas), con límites de WIP y envejecimiento por columna. Es
    lo que hace que el tablero siga sirviendo a los tres meses.
